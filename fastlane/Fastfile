@@ -320,6 +320,7 @@ platform :tvos do
     match(
       type: "appstore",
       platform: "tvos",
+      readonly: false,
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
       app_identifier: [TV_IDENTIFIER]
     )
