@@ -10,11 +10,20 @@
 		37A4BDDB2F5B6B4A00EEB289 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37A4BDDA2F5B6B4A00EEB289 /* WidgetKit.framework */; };
 		37A4BDDD2F5B6B4A00EEB289 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37A4BDDC2F5B6B4A00EEB289 /* SwiftUI.framework */; };
 		37A4BDE82F5B6B4C00EEB289 /* LoopFollowLAExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 37A4BDD92F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3EBC2FE813E3E016E18AC59A /* APNSClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC41992D16136B02F3D26DFA /* APNSClient.swift */; };
 		3F1335F351590E573D8E6962 /* Pods_LoopFollow.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7D55B42A22051DAD69E89D0 /* Pods_LoopFollow.framework */; };
+		4C5D2EECAA8A30093E198253 /* NightscoutClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94E3F52054C489BDE7874229 /* NightscoutClient.swift */; };
+		571674E6FB30A7E83752295F /* LoopFollowTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59AA4870139F7E04660AF9B3 /* LoopFollowTVApp.swift */; };
+		6E740825D562F7A351215B1E /* LoopTVSecrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8ED363F12B1D703EDA70085F /* LoopTVSecrets.plist */; };
+		6E740825D562F7A351215B20 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8ED363F12B1D703EDA700862 /* Assets.xcassets */; };
+		C5867DEBA78EFD23BB1650CF /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DB03313B78AE3F9197BBE2C /* Models.swift */; };
+		CA5C1C8384EF737FF2EE89B8 /* DashboardModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93503903E1616435DB8A4BFC /* DashboardModel.swift */; };
+		D770899402EC8705E926E9BF /* AppSecrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C57F33B9C9AB08D51DEB4113 /* AppSecrets.swift */; };
 		DD50C10A2F60A00000000001 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = DD50C10A2F60A00000000003 /* SocketIO */; };
 		DDB0AF552BB1B24A00AFA48B /* BuildDetails.plist in Resources */ = {isa = PBXBuildFile; fileRef = DDB0AF542BB1B24A00AFA48B /* BuildDetails.plist */; };
 		DDCFCAF22B17273200BE5751 /* LoopFollowDisplayNameConfig.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = DDCFCAF12B17273200BE5751 /* LoopFollowDisplayNameConfig.xcconfig */; };
 		DDF2C0142BEFD468007A20E6 /* blacklisted-versions.json in Resources */ = {isa = PBXBuildFile; fileRef = DDF2C0132BEFD468007A20E6 /* blacklisted-versions.json */; };
+		FB4DC62813B8DCE5C74086A7 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE0CFD8C0BCAA4BD861BACF1 /* RootView.swift */; };
 		FC5A5C3D2497B229009C550E /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = FC5A5C3C2497B229009C550E /* Config.xcconfig */; };
 		FCFEEC9E2486E68E00402A7F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCFEEC9D2486E68E00402A7F /* WebKit.framework */; };
 /* End PBXBuildFile section */
@@ -56,7 +65,17 @@
 		37A4BDD92F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoopFollowLAExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		37A4BDDA2F5B6B4A00EEB289 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = /System/Library/Frameworks/WidgetKit.framework; sourceTree = "<absolute>"; };
 		37A4BDDC2F5B6B4A00EEB289 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = /System/Library/Frameworks/SwiftUI.framework; sourceTree = "<absolute>"; };
+		4AC99FB8D7E8FD1375D88F6F /* LoopFollowTV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LoopFollowTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4DB03313B78AE3F9197BBE2C /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		59AA4870139F7E04660AF9B3 /* LoopFollowTVApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoopFollowTVApp.swift; sourceTree = "<group>"; };
+		8ED363F12B1D703EDA70085F /* LoopTVSecrets.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = LoopTVSecrets.plist; sourceTree = "<group>"; };
+		8ED363F12B1D703EDA700862 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		93503903E1616435DB8A4BFC /* DashboardModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DashboardModel.swift; sourceTree = "<group>"; };
+		94E3F52054C489BDE7874229 /* NightscoutClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NightscoutClient.swift; sourceTree = "<group>"; };
 		A7D55B42A22051DAD69E89D0 /* Pods_LoopFollow.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LoopFollow.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		BE0CFD8C0BCAA4BD861BACF1 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		C57F33B9C9AB08D51DEB4113 /* AppSecrets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSecrets.swift; sourceTree = "<group>"; };
+		CC41992D16136B02F3D26DFA /* APNSClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = APNSClient.swift; sourceTree = "<group>"; };
 		DDB0AF502BB1A84500AFA48B /* capture-build-details.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "capture-build-details.sh"; sourceTree = "<group>"; };
 		DDB0AF542BB1B24A00AFA48B /* BuildDetails.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = BuildDetails.plist; sourceTree = "<group>"; };
 		DDCC3ABF2DDE10B0006F1C10 /* Testing.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Testing.framework; path = Platforms/iPhoneOS.platform/Developer/Library/Frameworks/Testing.framework; sourceTree = DEVELOPER_DIR; };
@@ -130,6 +149,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		494C885E2969EE84C00A5DE5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DDCC3AD32DDE1790006F1C10 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -150,6 +176,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6417AA56F8EB569B2E9B2EEB /* LoopFollowTV */ = {
+			isa = PBXGroup;
+			children = (
+				59AA4870139F7E04660AF9B3 /* LoopFollowTVApp.swift */,
+				4DB03313B78AE3F9197BBE2C /* Models.swift */,
+				C57F33B9C9AB08D51DEB4113 /* AppSecrets.swift */,
+				94E3F52054C489BDE7874229 /* NightscoutClient.swift */,
+				CC41992D16136B02F3D26DFA /* APNSClient.swift */,
+				93503903E1616435DB8A4BFC /* DashboardModel.swift */,
+				BE0CFD8C0BCAA4BD861BACF1 /* RootView.swift */,
+				8ED363F12B1D703EDA70085F /* LoopTVSecrets.plist */,
+				8ED363F12B1D703EDA700862 /* Assets.xcassets */,
+			);
+			name = LoopFollowTV;
+			path = LoopFollowTV;
+			sourceTree = "<group>";
+		};
 		6A5880E0B811AF443B05AB02 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -196,6 +239,7 @@
 				6A5880E0B811AF443B05AB02 /* Frameworks */,
 				9555FE45F7FAEFA6142D04CA /* LoopFollow */,
 				BC0FBFD3754955D028EF6631 /* Shared */,
+				6417AA56F8EB569B2E9B2EEB /* LoopFollowTV */,
 			);
 			sourceTree = "<group>";
 		};
@@ -205,6 +249,7 @@
 				FC9788142485969B00A7906C /* Loop Follow.app */,
 				DDCC3AD62DDE1790006F1C10 /* Tests.xctest */,
 				37A4BDD92F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension.appex */,
+				4AC99FB8D7E8FD1375D88F6F /* LoopFollowTV.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -232,6 +277,23 @@
 			productName = LoopFollowLAExtensionExtension;
 			productReference = 37A4BDD92F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		3B95EACFED9DFAE7A5641F67 /* LoopFollowTV */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E37D90AAECAD8E81F5A92ABC /* Build configuration list for PBXNativeTarget "LoopFollowTV" */;
+			buildPhases = (
+				96766B11E34FD80A16DE9A9E /* Sources */,
+				494C885E2969EE84C00A5DE5 /* Frameworks */,
+				1A3FBC3BA061A0A842066BB8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LoopFollowTV;
+			productName = LoopFollowTV;
+			productReference = 4AC99FB8D7E8FD1375D88F6F /* LoopFollowTV.app */;
+			productType = "com.apple.product-type.application";
 		};
 		DDCC3AD52DDE1790006F1C10 /* Tests */ = {
 			isa = PBXNativeTarget;
@@ -325,11 +387,21 @@
 				FC9788132485969B00A7906C /* LoopFollow */,
 				DDCC3AD52DDE1790006F1C10 /* Tests */,
 				37A4BDD82F5B6B4A00EEB289 /* LoopFollowLAExtensionExtension */,
+				3B95EACFED9DFAE7A5641F67 /* LoopFollowTV */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		1A3FBC3BA061A0A842066BB8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E740825D562F7A351215B1E /* LoopTVSecrets.plist in Resources */,
+				6E740825D562F7A351215B20 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		37A4BDD72F5B6B4A00EEB289 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -445,6 +517,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		96766B11E34FD80A16DE9A9E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				571674E6FB30A7E83752295F /* LoopFollowTVApp.swift in Sources */,
+				C5867DEBA78EFD23BB1650CF /* Models.swift in Sources */,
+				D770899402EC8705E926E9BF /* AppSecrets.swift in Sources */,
+				4C5D2EECAA8A30093E198253 /* NightscoutClient.swift in Sources */,
+				3EBC2FE813E3E016E18AC59A /* APNSClient.swift in Sources */,
+				CA5C1C8384EF737FF2EE89B8 /* DashboardModel.swift in Sources */,
+				FB4DC62813B8DCE5C74086A7 /* RootView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -581,6 +667,51 @@
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
+		};
+		436C1379E1EE057991CFB9B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N8K8G6QA36;
+				INFOPLIST_FILE = LoopFollowTV/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.N8K8G6QA36.LoopFollowTV;
+				PRODUCT_NAME = LoopFollowTV;
+				SDKROOT = appletvos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4A7BA7454DEBA1D4290F1A40 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N8K8G6QA36;
+				INFOPLIST_FILE = LoopFollowTV/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.N8K8G6QA36.LoopFollowTV;
+				PRODUCT_NAME = LoopFollowTV;
+				SDKROOT = appletvos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+			};
+			name = Debug;
 		};
 		DDCC3ADD2DDE1790006F1C10 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -830,6 +961,15 @@
 			buildConfigurations = (
 				DDCC3ADD2DDE1790006F1C10 /* Debug */,
 				DDCC3ADE2DDE1790006F1C10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E37D90AAECAD8E81F5A92ABC /* Build configuration list for PBXNativeTarget "LoopFollowTV" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				436C1379E1EE057991CFB9B8 /* Release */,
+				4A7BA7454DEBA1D4290F1A40 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -43,6 +43,7 @@ end
 APP_SUFFIX = loopfollow_app_suffix
 APP_IDENTIFIER = "com.#{TEAMID}.LoopFollow#{APP_SUFFIX}"
 LA_IDENTIFIER = "#{APP_IDENTIFIER}.LoopFollowLAExtension"
+TV_IDENTIFIER = "com.#{TEAMID}.LoopFollowTV"
 
 platform :ios do
   desc "Build Loop Follow"
@@ -280,5 +281,90 @@ platform :ios do
     puts "Absolute path of new_certificate_needed.txt: #{file_path}"
     new_certificate_needed_content = File.read(file_path)
     puts "Certificate creation or renewal needed: #{new_certificate_needed_content}"
+  end
+end
+
+platform :tvos do
+  desc "Create the personal LoopFollow TV identifier and App Store record"
+  lane :prepare_LoopFollowTV do
+    setup_ci if ENV['CI']
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key: FASTLANE_KEY
+    )
+    bundle = Spaceship::ConnectAPI::BundleId.find(TV_IDENTIFIER) ||
+      Spaceship::ConnectAPI::BundleId.create(name: "LoopFollow TV", identifier: TV_IDENTIFIER, platform: "IOS")
+    unless Spaceship::ConnectAPI::App.find(TV_IDENTIFIER)
+      produce(
+        api_key: api_key,
+        app_identifier: TV_IDENTIFIER,
+        app_name: "LoopFollow TV",
+        sku: "loopfollow-tv-personal",
+        platform: "appletvos",
+        language: "English"
+      )
+    end
+  end
+
+  desc "Build the native Apple TV dashboard"
+  lane :build_LoopFollowTV do
+    setup_ci if ENV['CI']
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    previous = latest_testflight_build_number(
+      app_identifier: TV_IDENTIFIER,
+      platform: "appletvos",
+      api_key: api_key,
+      initial_build_number: 0
+    )
+    increment_build_number(xcodeproj: "#{GITHUB_WORKSPACE}/LoopFollow.xcodeproj", build_number: previous + 1)
+    match(
+      type: "appstore",
+      git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+      app_identifier: [TV_IDENTIFIER]
+    )
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    update_project_team(path: "#{GITHUB_WORKSPACE}/LoopFollow.xcodeproj", teamid: TEAMID)
+    update_code_signing_settings(
+      path: "#{GITHUB_WORKSPACE}/LoopFollow.xcodeproj",
+      profile_name: mapping[TV_IDENTIFIER],
+      code_sign_identity: "Apple Distribution",
+      targets: ["LoopFollowTV"]
+    )
+    gym(
+      export_method: "app-store",
+      scheme: "LoopFollowTV",
+      output_name: "LoopFollowTV.ipa",
+      configuration: "Release",
+      destination: "generic/platform=tvOS",
+      buildlog_path: "buildlog-tv",
+      export_options: { provisioningProfiles: { TV_IDENTIFIER => mapping[TV_IDENTIFIER] } }
+    )
+    copy_artifacts(target_path: "artifacts-tv", artifacts: ["*.ipa", "*.dSYM.zip"])
+  end
+
+  desc "Upload the native Apple TV dashboard to TestFlight"
+  lane :release_LoopFollowTV do
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: TV_IDENTIFIER,
+      ipa: "LoopFollowTV.ipa",
+      skip_waiting_for_build_processing: false,
+      distribute_external: false
+    )
   end
 end

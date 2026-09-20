@@ -1,0 +1,76 @@
+name: Build LoopFollow TV
+run-name: Build native LoopFollow TV
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - name: Select Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+      - name: Install dependencies
+        run: bundle install
+      - name: Create private app configuration
+        env:
+          NIGHTSCOUT_URL: ${{ secrets.LOOP_TV_NIGHTSCOUT_URL }}
+          NIGHTSCOUT_TOKEN: ${{ secrets.LOOP_TV_NIGHTSCOUT_TOKEN }}
+          APNS_KEY_ID: ${{ secrets.LOOP_TV_APNS_KEY_ID }}
+          APNS_TEAM_ID: ${{ secrets.TEAMID }}
+          APNS_PRIVATE_KEY: ${{ secrets.LOOP_TV_APNS_PRIVATE_KEY }}
+          OTP_SECRET: ${{ secrets.LOOP_TV_OTP_SECRET }}
+        run: |
+          python3 - <<'PY'
+          import os, plistlib
+          values = {
+              "NightscoutURL": os.environ["NIGHTSCOUT_URL"],
+              "NightscoutToken": os.environ["NIGHTSCOUT_TOKEN"],
+              "APNSKeyID": os.environ["APNS_KEY_ID"],
+              "APNSTeamID": os.environ["APNS_TEAM_ID"],
+              "APNSPrivateKey": os.environ["APNS_PRIVATE_KEY"],
+              "OTPSecret": os.environ.get("OTP_SECRET", ""),
+          }
+          with open("LoopFollowTV/LoopTVSecrets.plist", "wb") as handle:
+              plistlib.dump(values, handle)
+          PY
+      - name: Prepare App Store record
+        run: bundle exec fastlane tvos prepare_LoopFollowTV
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      - name: Build and sign
+        run: bundle exec fastlane tvos build_LoopFollowTV
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      - name: Upload to TestFlight
+        run: bundle exec fastlane tvos release_LoopFollowTV
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: LoopFollowTV-build
+          path: |
+            artifacts-tv
+            buildlog-tv
