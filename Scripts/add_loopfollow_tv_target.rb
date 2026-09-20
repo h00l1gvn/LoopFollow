@@ -27,7 +27,7 @@ assets = group.new_file("Assets.xcassets")
 target.resources_build_phase.add_file_reference(assets)
 
 target.build_configurations.each do |config|
-  config.build_settings["PRODUCT_BUNDLE_IDENTIFIER"] = "com.N8K8G6QA36.LoopFollowTV"
+  config.build_settings["PRODUCT_BUNDLE_IDENTIFIER"] = "com.N8K8G6QA36.LoopFollow"
   config.build_settings["PRODUCT_NAME"] = "LoopFollowTV"
   config.build_settings["INFOPLIST_FILE"] = "LoopFollowTV/Info.plist"
   config.build_settings["SWIFT_VERSION"] = "5.0"

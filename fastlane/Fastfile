@@ -43,7 +43,7 @@ end
 APP_SUFFIX = loopfollow_app_suffix
 APP_IDENTIFIER = "com.#{TEAMID}.LoopFollow#{APP_SUFFIX}"
 LA_IDENTIFIER = "#{APP_IDENTIFIER}.LoopFollowLAExtension"
-TV_IDENTIFIER = "com.#{TEAMID}.LoopFollowTV"
+TV_IDENTIFIER = APP_IDENTIFIER
 
 platform :ios do
   desc "Build Loop Follow"
@@ -285,7 +285,7 @@ platform :ios do
 end
 
 platform :tvos do
-  desc "Create the personal LoopFollow TV identifier and App Store record"
+  desc "Confirm the existing LoopFollow universal app identifier"
   lane :prepare_LoopFollowTV do
     setup_ci if ENV['CI']
     api_key = app_store_connect_api_key(
@@ -298,18 +298,8 @@ platform :tvos do
       issuer_id: FASTLANE_ISSUER_ID,
       key: FASTLANE_KEY
     )
-    bundle = Spaceship::ConnectAPI::BundleId.find(TV_IDENTIFIER) ||
-      Spaceship::ConnectAPI::BundleId.create(name: "LoopFollow TV", identifier: TV_IDENTIFIER, platform: "IOS")
-    unless Spaceship::ConnectAPI::App.find(TV_IDENTIFIER)
-      produce(
-        api_key: api_key,
-        app_identifier: TV_IDENTIFIER,
-        app_name: "LoopFollow TV",
-        sku: "loopfollow-tv-personal",
-        platform: "appletvos",
-        language: "English"
-      )
-    end
+    UI.user_error!("Existing LoopFollow App Store record was not found") unless Spaceship::ConnectAPI::App.find(TV_IDENTIFIER)
+    UI.user_error!("Existing LoopFollow bundle identifier was not found") unless Spaceship::ConnectAPI::BundleId.find(TV_IDENTIFIER)
   end
 
   desc "Build the native Apple TV dashboard"
@@ -329,6 +319,7 @@ platform :tvos do
     increment_build_number(xcodeproj: "#{GITHUB_WORKSPACE}/LoopFollow.xcodeproj", build_number: previous + 1)
     match(
       type: "appstore",
+      platform: "tvos",
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
       app_identifier: [TV_IDENTIFIER]
     )
