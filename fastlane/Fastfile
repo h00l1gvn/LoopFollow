@@ -44,6 +44,7 @@ APP_SUFFIX = loopfollow_app_suffix
 APP_IDENTIFIER = "com.#{TEAMID}.LoopFollow#{APP_SUFFIX}"
 LA_IDENTIFIER = "#{APP_IDENTIFIER}.LoopFollowLAExtension"
 TV_IDENTIFIER = APP_IDENTIFIER
+MOOBYTE_TV_IDENTIFIER = "local.rabbitload.tv"
 
 platform :ios do
   desc "Build Loop Follow"
@@ -357,6 +358,75 @@ platform :tvos do
       ipa: "LoopFollowTV.ipa",
       skip_waiting_for_build_processing: false,
       distribute_external: false
+    )
+  end
+
+  desc "Build and sign MooByte for Apple TV using the proven Loop delivery credentials"
+  lane :build_MooByteTV do
+    setup_ci if ENV['CI']
+    source_root = File.join(GITHUB_WORKSPACE, "MooByteSource")
+    project_path = File.join(source_root, "RabbitLoad.xcodeproj")
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    previous = latest_testflight_build_number(
+      app_identifier: MOOBYTE_TV_IDENTIFIER,
+      platform: "appletvos",
+      api_key: api_key,
+      initial_build_number: 0
+    )
+    increment_build_number(xcodeproj: project_path, build_number: previous + 1)
+    match(
+      type: "appstore",
+      platform: "tvos",
+      readonly: false,
+      git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+      app_identifier: [MOOBYTE_TV_IDENTIFIER]
+    )
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    update_project_team(path: project_path, teamid: TEAMID)
+    update_code_signing_settings(
+      path: project_path,
+      profile_name: mapping[MOOBYTE_TV_IDENTIFIER],
+      code_sign_identity: "Apple Distribution",
+      targets: ["RabbitLoadTV"]
+    )
+    gym(
+      project: project_path,
+      export_method: "app-store",
+      scheme: "RabbitLoadTV",
+      output_name: "MooByteTV.ipa",
+      configuration: "Release",
+      destination: "generic/platform=tvOS",
+      buildlog_path: "buildlog-moobyte-tv",
+      export_options: {
+        provisioningProfiles: {
+          MOOBYTE_TV_IDENTIFIER => mapping[MOOBYTE_TV_IDENTIFIER]
+        }
+      }
+    )
+    copy_artifacts(
+      target_path: "artifacts-moobyte-tv",
+      artifacts: ["MooByteTV.ipa", "*.dSYM.zip"]
+    )
+  end
+
+  desc "Upload MooByte Apple TV to its internal TestFlight group"
+  lane :release_MooByteTV do
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: MOOBYTE_TV_IDENTIFIER,
+      ipa: "MooByteTV.ipa",
+      skip_waiting_for_build_processing: false,
+      distribute_external: false,
+      groups: ["MooByte Home"]
     )
   end
 end

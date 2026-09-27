@@ -1,0 +1,63 @@
+name: Build MooByte TV
+run-name: Build and deliver MooByte to private Apple TV TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build_MooByteTV.yml
+
+jobs:
+  build:
+    runs-on: macos-26
+    permissions:
+      contents: read
+    steps:
+      - name: Select Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+
+      - name: Checkout delivery tools
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Checkout MooByte source
+        uses: actions/checkout@v5
+        with:
+          repository: h00l1gvn/moobyte-apple-private
+          token: ${{ secrets.GH_PAT }}
+          path: MooByteSource
+
+      - name: Install delivery dependencies
+        run: bundle install
+
+      - name: Build and sign MooByte TV
+        run: bundle exec fastlane tvos build_MooByteTV
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+
+      - name: Upload MooByte TV to TestFlight
+        run: bundle exec fastlane tvos release_MooByteTV
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+
+      - name: Preserve build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: MooByteTV-build
+          path: |
+            artifacts-moobyte-tv
+            buildlog-moobyte-tv
