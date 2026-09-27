@@ -324,7 +324,7 @@ platform :ios do
       api_key: api_key,
       initial_build_number: 0
     )
-    increment_build_number(xcodeproj: project_path, build_number: previous + 1)
+    next_build_number = previous + 1
     match(
       type: "appstore",
       platform: "ios",
@@ -353,6 +353,7 @@ platform :ios do
       output_name: "MooByte.ipa",
       configuration: "Release",
       destination: "generic/platform=iOS",
+      xcargs: "CURRENT_PROJECT_VERSION=#{next_build_number}",
       buildlog_path: "buildlog-moobyte-phone",
       export_options: {
         provisioningProfiles: {
@@ -547,11 +548,12 @@ platform :mac do
       api_key: api_key,
       initial_build_number: 0
     )
-    increment_build_number(xcodeproj: project_path, build_number: previous + 1)
+    next_build_number = previous + 1
     match(
       type: "appstore",
       platform: "macos",
       readonly: false,
+      additional_cert_types: ["mac_installer_distribution"],
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
       app_identifier: [MOOBYTE_MAC_IDENTIFIER]
     )
@@ -570,6 +572,7 @@ platform :mac do
       output_name: "MooByteMac.pkg",
       configuration: "Release",
       destination: "generic/platform=macOS",
+      xcargs: "CURRENT_PROJECT_VERSION=#{next_build_number}",
       buildlog_path: "buildlog-moobyte-mac",
       export_options: {
         provisioningProfiles: {

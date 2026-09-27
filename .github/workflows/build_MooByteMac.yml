@@ -8,6 +8,7 @@ on:
       - main
     paths:
       - .github/workflows/build_MooByteMac.yml
+      - fastlane/Fastfile
 
 jobs:
   build:
