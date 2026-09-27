@@ -1,5 +1,6 @@
 name: Prepare MooByte Devices
 run-name: Register MooByte identifiers for every Apple device
+# Apple registers these identifiers as universal even when the API requires IOS here.
 
 on:
   workflow_dispatch:

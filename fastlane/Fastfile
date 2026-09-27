@@ -300,7 +300,7 @@ platform :ios do
     }
     identifiers.each do |name, identifier|
       next if Spaceship::ConnectAPI::BundleId.find(identifier)
-      Spaceship::ConnectAPI::BundleId.create(name: name, identifier: identifier)
+      Spaceship::ConnectAPI::BundleId.create(name: name, identifier: identifier, platform: "IOS")
       UI.success("Registered #{identifier}")
     end
   end
