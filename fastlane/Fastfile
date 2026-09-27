@@ -45,6 +45,9 @@ APP_IDENTIFIER = "com.#{TEAMID}.LoopFollow#{APP_SUFFIX}"
 LA_IDENTIFIER = "#{APP_IDENTIFIER}.LoopFollowLAExtension"
 TV_IDENTIFIER = APP_IDENTIFIER
 MOOBYTE_TV_IDENTIFIER = "local.rabbitload.tv"
+MOOBYTE_IOS_IDENTIFIER = "local.rabbitload"
+MOOBYTE_WATCH_IDENTIFIER = "local.rabbitload.watch"
+MOOBYTE_MAC_IDENTIFIER = "local.rabbitload.mac"
 
 platform :ios do
   desc "Build Loop Follow"
@@ -304,6 +307,82 @@ platform :ios do
       UI.success("Registered #{identifier}")
     end
   end
+
+  desc "Build and sign MooByte for iPhone, iPad, and the embedded Apple Watch app"
+  lane :build_MooBytePhone do
+    setup_ci if ENV['CI']
+    source_root = File.join(GITHUB_WORKSPACE, "MooByteSource")
+    project_path = File.join(source_root, "RabbitLoad.xcodeproj")
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    previous = latest_testflight_build_number(
+      app_identifier: MOOBYTE_IOS_IDENTIFIER,
+      platform: "ios",
+      api_key: api_key,
+      initial_build_number: 0
+    )
+    increment_build_number(xcodeproj: project_path, build_number: previous + 1)
+    match(
+      type: "appstore",
+      platform: "ios",
+      readonly: false,
+      git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+      app_identifier: [MOOBYTE_IOS_IDENTIFIER, MOOBYTE_WATCH_IDENTIFIER]
+    )
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    update_project_team(path: project_path, teamid: TEAMID)
+    update_code_signing_settings(
+      path: project_path,
+      profile_name: mapping[MOOBYTE_IOS_IDENTIFIER],
+      code_sign_identity: "Apple Distribution",
+      targets: ["RabbitLoadPhone"]
+    )
+    update_code_signing_settings(
+      path: project_path,
+      profile_name: mapping[MOOBYTE_WATCH_IDENTIFIER],
+      code_sign_identity: "Apple Distribution",
+      targets: ["RabbitLoadWatch"]
+    )
+    gym(
+      project: project_path,
+      export_method: "app-store",
+      scheme: "RabbitLoadPhone",
+      output_name: "MooByte.ipa",
+      configuration: "Release",
+      destination: "generic/platform=iOS",
+      buildlog_path: "buildlog-moobyte-phone",
+      export_options: {
+        provisioningProfiles: {
+          MOOBYTE_IOS_IDENTIFIER => mapping[MOOBYTE_IOS_IDENTIFIER],
+          MOOBYTE_WATCH_IDENTIFIER => mapping[MOOBYTE_WATCH_IDENTIFIER]
+        }
+      }
+    )
+    copy_artifacts(
+      target_path: "artifacts-moobyte-phone",
+      artifacts: ["MooByte.ipa", "*.dSYM.zip"]
+    )
+  end
+
+  desc "Upload MooByte for iPhone, iPad, and Apple Watch to internal TestFlight"
+  lane :release_MooBytePhone do
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: MOOBYTE_IOS_IDENTIFIER,
+      app_platform: "ios",
+      ipa: "MooByte.ipa",
+      skip_waiting_for_build_processing: false,
+      distribute_external: false
+    )
+  end
 end
 
 platform :tvos do
@@ -445,6 +524,77 @@ platform :tvos do
       api_key: api_key,
       app_identifier: MOOBYTE_TV_IDENTIFIER,
       ipa: "MooByteTV.ipa",
+      skip_waiting_for_build_processing: false,
+      distribute_external: false
+    )
+  end
+end
+
+platform :mac do
+  desc "Build and sign the native MooByte Mac app"
+  lane :build_MooByteMac do
+    setup_ci if ENV['CI']
+    source_root = File.join(GITHUB_WORKSPACE, "MooByteSource")
+    project_path = File.join(source_root, "RabbitLoad.xcodeproj")
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    previous = latest_testflight_build_number(
+      app_identifier: MOOBYTE_MAC_IDENTIFIER,
+      platform: "osx",
+      api_key: api_key,
+      initial_build_number: 0
+    )
+    increment_build_number(xcodeproj: project_path, build_number: previous + 1)
+    match(
+      type: "appstore",
+      platform: "macos",
+      readonly: false,
+      git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+      app_identifier: [MOOBYTE_MAC_IDENTIFIER]
+    )
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    update_project_team(path: project_path, teamid: TEAMID)
+    update_code_signing_settings(
+      path: project_path,
+      profile_name: mapping[MOOBYTE_MAC_IDENTIFIER],
+      code_sign_identity: "Apple Distribution",
+      targets: ["RabbitLoadMac"]
+    )
+    gym(
+      project: project_path,
+      export_method: "app-store",
+      scheme: "RabbitLoadMac",
+      output_name: "MooByteMac.pkg",
+      configuration: "Release",
+      destination: "generic/platform=macOS",
+      buildlog_path: "buildlog-moobyte-mac",
+      export_options: {
+        provisioningProfiles: {
+          MOOBYTE_MAC_IDENTIFIER => mapping[MOOBYTE_MAC_IDENTIFIER]
+        }
+      }
+    )
+    copy_artifacts(
+      target_path: "artifacts-moobyte-mac",
+      artifacts: ["MooByteMac.pkg", "*.dSYM.zip"]
+    )
+  end
+
+  desc "Upload the native MooByte Mac app to internal TestFlight"
+  lane :release_MooByteMac do
+    api_key = app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: MOOBYTE_MAC_IDENTIFIER,
+      app_platform: "osx",
+      pkg: "MooByteMac.pkg",
       skip_waiting_for_build_processing: false,
       distribute_external: false
     )
