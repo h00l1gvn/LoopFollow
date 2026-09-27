@@ -283,6 +283,27 @@ platform :ios do
     new_certificate_needed_content = File.read(file_path)
     puts "Certificate creation or renewal needed: #{new_certificate_needed_content}"
   end
+
+  desc "Register the MooByte identifiers used by iPhone, iPad, Apple Watch, and Mac"
+  lane :prepare_MooByteDevices do
+    setup_ci if ENV['CI']
+    app_store_connect_api_key(
+      key_id: FASTLANE_KEY_ID,
+      issuer_id: FASTLANE_ISSUER_ID,
+      key_content: FASTLANE_KEY
+    )
+
+    identifiers = {
+      "MooByte iPhone and iPad" => "local.rabbitload",
+      "MooByte Apple Watch" => "local.rabbitload.watch",
+      "MooByte Mac" => "local.rabbitload.mac"
+    }
+    identifiers.each do |name, identifier|
+      next if Spaceship::ConnectAPI::BundleId.find(identifier)
+      Spaceship::ConnectAPI::BundleId.create(name: name, identifier: identifier)
+      UI.success("Registered #{identifier}")
+    end
+  end
 end
 
 platform :tvos do
