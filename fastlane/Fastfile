@@ -425,8 +425,7 @@ platform :tvos do
       app_identifier: MOOBYTE_TV_IDENTIFIER,
       ipa: "MooByteTV.ipa",
       skip_waiting_for_build_processing: false,
-      distribute_external: false,
-      groups: ["MooByte Home"]
+      distribute_external: false
     )
   end
 end
