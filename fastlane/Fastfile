@@ -48,6 +48,7 @@ MOOBYTE_TV_IDENTIFIER = "local.rabbitload.tv"
 MOOBYTE_IOS_IDENTIFIER = "local.rabbitload"
 MOOBYTE_WATCH_IDENTIFIER = "local.rabbitload.watch"
 MOOBYTE_MAC_IDENTIFIER = "local.rabbitload.mac"
+MOOBYTE_WIDGET_IDENTIFIER = "local.rabbitload.widgets"
 
 platform :ios do
   desc "Build Loop Follow"
@@ -330,7 +331,8 @@ platform :ios do
       platform: "ios",
       readonly: false,
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
-      app_identifier: [MOOBYTE_IOS_IDENTIFIER, MOOBYTE_WATCH_IDENTIFIER]
+      app_identifier: [MOOBYTE_IOS_IDENTIFIER, MOOBYTE_WATCH_IDENTIFIER, MOOBYTE_WIDGET_IDENTIFIER],
+      force: true # Refresh only MooByte profiles after its widget App Group is approved.
     )
     mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
     update_project_team(path: project_path, teamid: TEAMID)
@@ -346,6 +348,12 @@ platform :ios do
       code_sign_identity: "Apple Distribution",
       targets: ["RabbitLoadWatch"]
     )
+    update_code_signing_settings(
+      path: project_path,
+      profile_name: mapping[MOOBYTE_WIDGET_IDENTIFIER],
+      code_sign_identity: "Apple Distribution",
+      targets: ["MooByteWidgets"]
+    )
     gym(
       project: project_path,
       export_method: "app-store",
@@ -358,7 +366,8 @@ platform :ios do
       export_options: {
         provisioningProfiles: {
           MOOBYTE_IOS_IDENTIFIER => mapping[MOOBYTE_IOS_IDENTIFIER],
-          MOOBYTE_WATCH_IDENTIFIER => mapping[MOOBYTE_WATCH_IDENTIFIER]
+          MOOBYTE_WATCH_IDENTIFIER => mapping[MOOBYTE_WATCH_IDENTIFIER],
+          MOOBYTE_WIDGET_IDENTIFIER => mapping[MOOBYTE_WIDGET_IDENTIFIER]
         }
       }
     )
@@ -548,7 +557,7 @@ platform :mac do
       api_key: api_key,
       initial_build_number: 0
     )
-    next_build_number = previous + 1
+    next_build_number = [previous + 1, 24].max
     match(
       type: "appstore",
       platform: "macos",
