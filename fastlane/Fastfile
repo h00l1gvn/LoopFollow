@@ -328,7 +328,7 @@ platform :ios do
       api_key: api_key,
       initial_build_number: 0
     )
-    source_build_number = get_build_number(xcodeproj: project_path).to_i
+    source_build_number = Integer(File.read(File.join(source_root, "Scripts/generate_project.py"))[/^PHONE_BUILD_VERSION = "(\d+)"$/, 1])
     next_build_number = [previous + 1, source_build_number].max
     match(
       type: "appstore",
