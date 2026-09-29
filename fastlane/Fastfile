@@ -49,6 +49,9 @@ MOOBYTE_IOS_IDENTIFIER = "local.rabbitload"
 MOOBYTE_WATCH_IDENTIFIER = "local.rabbitload.watch"
 MOOBYTE_MAC_IDENTIFIER = "local.rabbitload.mac"
 MOOBYTE_WIDGET_IDENTIFIER = "local.rabbitload.widgets"
+MOOBYTE_SAFARI_IDENTIFIER = "local.rabbitload.safari"
+MOOBYTE_SHARE_IDENTIFIER = "local.rabbitload.share"
+MOOBYTE_MAC_SAFARI_IDENTIFIER = "local.rabbitload.mac.safari"
 
 platform :ios do
   desc "Build Loop Follow"
@@ -331,8 +334,8 @@ platform :ios do
       platform: "ios",
       readonly: false,
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
-      app_identifier: [MOOBYTE_IOS_IDENTIFIER, MOOBYTE_WATCH_IDENTIFIER, MOOBYTE_WIDGET_IDENTIFIER],
-      force: true # Refresh only MooByte profiles after its widget App Group is approved.
+      app_identifier: [MOOBYTE_IOS_IDENTIFIER, MOOBYTE_WATCH_IDENTIFIER, MOOBYTE_WIDGET_IDENTIFIER, MOOBYTE_SAFARI_IDENTIFIER, MOOBYTE_SHARE_IDENTIFIER],
+      force: true # MooByte only; register/approve its new share group before dispatch.
     )
     mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
     update_project_team(path: project_path, teamid: TEAMID)
@@ -354,6 +357,14 @@ platform :ios do
       code_sign_identity: "Apple Distribution",
       targets: ["MooByteWidgets"]
     )
+    { MOOBYTE_SAFARI_IDENTIFIER => "MooByteSafari", MOOBYTE_SHARE_IDENTIFIER => "MooByteShare" }.each do |identifier, target|
+      update_code_signing_settings(
+        path: project_path,
+        profile_name: mapping[identifier],
+        code_sign_identity: "Apple Distribution",
+        targets: [target]
+      )
+    end
     gym(
       project: project_path,
       export_method: "app-store",
@@ -367,7 +378,9 @@ platform :ios do
         provisioningProfiles: {
           MOOBYTE_IOS_IDENTIFIER => mapping[MOOBYTE_IOS_IDENTIFIER],
           MOOBYTE_WATCH_IDENTIFIER => mapping[MOOBYTE_WATCH_IDENTIFIER],
-          MOOBYTE_WIDGET_IDENTIFIER => mapping[MOOBYTE_WIDGET_IDENTIFIER]
+          MOOBYTE_WIDGET_IDENTIFIER => mapping[MOOBYTE_WIDGET_IDENTIFIER],
+          MOOBYTE_SAFARI_IDENTIFIER => mapping[MOOBYTE_SAFARI_IDENTIFIER],
+          MOOBYTE_SHARE_IDENTIFIER => mapping[MOOBYTE_SHARE_IDENTIFIER]
         }
       }
     )
@@ -557,14 +570,15 @@ platform :mac do
       api_key: api_key,
       initial_build_number: 0
     )
-    next_build_number = [previous + 1, 24].max
+    next_build_number = [previous + 1, 25].max
     match(
       type: "appstore",
       platform: "macos",
       readonly: false,
       additional_cert_types: ["mac_installer_distribution"],
       git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
-      app_identifier: [MOOBYTE_MAC_IDENTIFIER]
+      app_identifier: [MOOBYTE_MAC_IDENTIFIER, MOOBYTE_MAC_SAFARI_IDENTIFIER],
+      force: true
     )
     mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
     update_project_team(path: project_path, teamid: TEAMID)
@@ -573,6 +587,12 @@ platform :mac do
       profile_name: mapping[MOOBYTE_MAC_IDENTIFIER],
       code_sign_identity: "Apple Distribution",
       targets: ["RabbitLoadMac"]
+    )
+    update_code_signing_settings(
+      path: project_path,
+      profile_name: mapping[MOOBYTE_MAC_SAFARI_IDENTIFIER],
+      code_sign_identity: "Apple Distribution",
+      targets: ["MooByteMacSafari"]
     )
     gym(
       project: project_path,
@@ -585,7 +605,8 @@ platform :mac do
       buildlog_path: "buildlog-moobyte-mac",
       export_options: {
         provisioningProfiles: {
-          MOOBYTE_MAC_IDENTIFIER => mapping[MOOBYTE_MAC_IDENTIFIER]
+          MOOBYTE_MAC_IDENTIFIER => mapping[MOOBYTE_MAC_IDENTIFIER],
+          MOOBYTE_MAC_SAFARI_IDENTIFIER => mapping[MOOBYTE_MAC_SAFARI_IDENTIFIER]
         }
       }
     )
