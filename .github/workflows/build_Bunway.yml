@@ -1,14 +1,18 @@
 name: Build Bunway
 run-name: Build and deliver Bunway 0.4 iPhone, iPad, Watch, widgets and Apple TV
 
-on:
+'on':
   workflow_dispatch:
     inputs:
       capabilities_ready:
-        description: Bunway IDs, App Group, CloudKit Production schema and profiles are ready
+        description: Bunway IDs, App Group, CloudKit Production schema and profiles are verified
         type: boolean
         required: true
         default: false
+      source_sha:
+        description: Full reviewed Bunway source commit already merged into main
+        type: string
+        required: true
   push:
     branches: [bunway-release]
     paths:
@@ -16,57 +20,104 @@ on:
       - fastlane/Fastfile
       - fastlane/bunway/**
       - BUNWAY_RELEASE_SETUP.md
+      - BUNWAY_STORE_PRIVACY.md
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bunway-store-delivery
+  cancel-in-progress: false
 
 jobs:
   build:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release'
     runs-on: macos-26
-    permissions:
-      contents: read
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: ios
             lane: BunwayPhone
+            ipa: BunwayPhone.ipa
+            buildlog: buildlog-bunway-phone
           - platform: tvos
             lane: BunwayTV
+            ipa: BunwayTV.ipa
+            buildlog: buildlog-bunway-tv
     steps:
-      - name: Confirm Bunway 0.4 release prerequisites
+      - name: Confirm Bunway release prerequisites without printing credentials
+        id: selected
         env:
-          CONFIRMED: ${{ github.event.inputs.capabilities_ready == 'true' || vars.BUNWAY_CAPABILITIES_READY == 'true' }}
+          CONFIRMED: ${{ (github.event_name == 'workflow_dispatch' && inputs.capabilities_ready == true) || (github.event_name == 'push' && vars.BUNWAY_CAPABILITIES_READY == 'true') }}
+          SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || vars.BUNWAY_SOURCE_SHA }}
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
         run: |
-          if [ "$CONFIRMED" != "true" ]; then
-            echo "Confirm BUNWAY_RELEASE_SETUP.md prerequisites and set capabilities_ready or BUNWAY_CAPABILITIES_READY before delivery."
-            exit 1
-          fi
+          python3 - <<'PY'
+          import os,re,sys
+          if os.environ.get('CONFIRMED') != 'true':
+              sys.exit('Verify Bunway IDs, capabilities, Production schema and refreshed profiles before confirming delivery.')
+          source=os.environ.get('SOURCE_SHA','')
+          if not re.fullmatch(r'[0-9a-fA-F]{40}',source):
+              sys.exit('Select a full reviewed Bunway source commit SHA, not a branch name.')
+          if not re.fullmatch(r'[0-9a-fA-F]{64}',os.environ.get('BUNWAY_ARTIFACT_KEY','')):
+              sys.exit('Configure the independent private 256-bit artifact encryption key before delivery.')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+              output.write('source_sha='+source.lower()+'\n')
+          PY
 
-      - name: Select Xcode 26
+      - name: Select Xcode 26.2
         run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
 
-      - name: Checkout delivery tools
+      - name: Checkout delivery tools without persisting credentials
         uses: actions/checkout@v5
         with:
           token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
 
-      - name: Checkout Bunway source
+      - name: Checkout the reviewed Bunway source commit
         uses: actions/checkout@v5
         with:
           repository: h00l1gvn/bunway-app
+          ref: ${{ steps.selected.outputs.source_sha }}
           token: ${{ secrets.GH_PAT }}
           path: BunwaySource
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require selected source to be merged into Bunway main
+        env:
+          SOURCE_SHA: ${{ steps.selected.outputs.source_sha }}
+        run: git -C BunwaySource merge-base --is-ancestor "$SOURCE_SHA" refs/remotes/origin/main
 
       - name: Regenerate Bunway targets
         run: python3 BunwaySource/apple/generate_project.py
 
-      - name: Install delivery dependencies
+      - name: Install pinned delivery dependencies
         run: bundle install
 
-      - name: Validate profile verification logic
-        run: ruby fastlane/bunway/test_verify_profiles.rb
+      - name: Select Node 24 for authenticated artifact encryption
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
 
-      - name: Build and sign Bunway
-        run: bundle exec fastlane ${{ matrix.platform }} build_${{ matrix.lane }}
-        env: &apple_credentials
+      - name: Validate profile, artifact encryption and workflow boundaries
+        run: |
+          ruby fastlane/bunway/test_verify_profiles.rb
+          node --test fastlane/bunway/test_artifact_crypto.cjs
+          ruby fastlane/bunway/test_store_workflow.rb
+
+      - name: Build and sign Bunway without printing raw output
+        id: store_build
+        run: |
+          umask 077
+          if ! bundle exec fastlane ${{ matrix.platform }} build_${{ matrix.lane }} > "$RUNNER_TEMP/bunway-${{ matrix.platform }}-build.log" 2>&1; then
+            echo "Bunway Store build failed. Check capabilities, refreshed profiles and the selected source. Raw output was not printed; encrypted diagnostics will be preserved when available."
+            exit 1
+          fi
+          echo "Bunway Store build completed. Encrypting its private package next."
+        env:
           BUNWAY_CAPABILITIES_READY: "true"
           TEAMID: ${{ secrets.TEAMID }}
           GH_PAT: ${{ secrets.GH_PAT }}
@@ -75,16 +126,87 @@ jobs:
           FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
 
-      - name: Upload Bunway to TestFlight
-        run: bundle exec fastlane ${{ matrix.platform }} release_${{ matrix.lane }}
-        env: *apple_credentials
+      - name: Encrypt the exact Store package
+        run: node fastlane/bunway/artifact_crypto.cjs encrypt ${{ matrix.ipa }} ${{ matrix.ipa }}.enc
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
 
-      - name: Preserve build diagnostics
-        if: always()
+      - name: Preserve only the encrypted Store package
         uses: actions/upload-artifact@v6
         with:
-          name: Bunway-${{ matrix.lane }}-build
-          path: |
-            buildlog-bunway-${{ matrix.platform }}
-            BunwayPhone.ipa
-            BunwayTV.ipa
+          name: Bunway-${{ matrix.lane }}-encrypted-${{ github.run_id }}
+          path: ${{ matrix.ipa }}.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Bunway to TestFlight without printing raw output
+        id: store_upload
+        run: |
+          umask 077
+          if ! bundle exec fastlane ${{ matrix.platform }} release_${{ matrix.lane }} > "$RUNNER_TEMP/bunway-${{ matrix.platform }}-upload.log" 2>&1; then
+            echo "Bunway TestFlight upload failed. Raw output was not printed; encrypted diagnostics will be preserved when available."
+            exit 1
+          fi
+          echo "Bunway upload and processing check completed. Confirm each installed version separately."
+        env:
+          BUNWAY_CAPABILITIES_READY: "true"
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+
+      - name: Encrypt failed-run Fastlane and Xcode diagnostics
+        id: encrypt_diagnostics
+        if: failure() && (steps.store_build.outcome == 'failure' || steps.store_build.outcome == 'success')
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          BUILD_LOG_DIR: ${{ matrix.buildlog }}
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import os,sys,tarfile
+          from pathlib import Path
+          try:
+              platform=os.environ['PLATFORM']
+              expected={'ios':'buildlog-bunway-phone','tvos':'buildlog-bunway-tv'}
+              if platform not in expected or os.environ['BUILD_LOG_DIR'] != expected[platform]:
+                  sys.exit('The private diagnostic configuration was invalid.')
+              temporary=Path(os.environ['RUNNER_TEMP'])
+              candidates=[(temporary/f'bunway-{platform}-build.log','fastlane-build.log'),
+                          (temporary/f'bunway-{platform}-upload.log','fastlane-upload.log')]
+              folder=Path(os.environ['GITHUB_WORKSPACE'])/expected[platform]
+              if folder.is_dir() and not folder.is_symlink():
+                  candidates.extend((path,'xcode/'+path.name) for path in sorted(folder.glob('*.log')))
+              sources=[(path,name) for path,name in candidates if path.is_file() and not path.is_symlink()]
+              if sources:
+                  target=temporary/f'bunway-{platform}-diagnostics.tar.gz'
+                  with tarfile.open(target,'w:gz') as archive:
+                      for path,name in sources: archive.add(path,arcname=name,recursive=False)
+                  target.chmod(0o600)
+          except Exception:
+              sys.exit('Private diagnostic collection failed. No raw logs or filenames were printed.')
+          PY
+          if [ -s "$RUNNER_TEMP/bunway-${{ matrix.platform }}-diagnostics.tar.gz" ]; then
+            node fastlane/bunway/artifact_crypto.cjs encrypt "$RUNNER_TEMP/bunway-${{ matrix.platform }}-diagnostics.tar.gz" ${{ matrix.ipa }}.diagnostics.tar.gz.enc
+            echo "preserved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The failed run produced no diagnostic logs to preserve."
+          fi
+
+      - name: Preserve only encrypted failure diagnostics
+        if: failure() && steps.encrypt_diagnostics.outputs.preserved == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: Bunway-${{ matrix.lane }}-encrypted-diagnostics-${{ github.run_id }}
+          path: ${{ matrix.ipa }}.diagnostics.tar.gz.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove plaintext packages and private signing/build output
+        if: always()
+        run: |
+          rm -f ${{ matrix.ipa }} "$RUNNER_TEMP/bunway-${{ matrix.platform }}-build.log" "$RUNNER_TEMP/bunway-${{ matrix.platform }}-upload.log" "$RUNNER_TEMP/bunway-${{ matrix.platform }}-diagnostics.tar.gz"
+          rm -rf ${{ matrix.buildlog }}
