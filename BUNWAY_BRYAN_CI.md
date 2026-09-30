@@ -37,6 +37,12 @@ The first run uses an explicitly named branch push. GitHub's manual-dispatch dis
 
 After reviewing the local delivery-tools commit, configuring the approved source SHA, and completing all prerequisites, push that exact prepared commit to `bunway-bryan-release`. Only changes to this workflow, the Bunway Fastlane helpers, `fastlane/Fastfile`, or this guide trigger it. No other existing workflow has a push filter matching that branch. Keep the existing `bunway-release` checkout unchanged.
 
+After the push, verify that GitHub enqueued this exact workflow on the intended
+branch and delivery commit. If initial branch creation produces no run, a reviewed
+update to this watched guide can provide a subsequent push event on the existing
+branch. Keep the immutable application source and readiness checks in place, and
+record the resulting delivery SHA separately from any Store run already in progress.
+
 ```sh
 git -C /tmp/bunway-bryan-delivery-ci-20260930 push origin HEAD:bunway-bryan-release
 gh run list --repo h00l1gvn/LoopFollow --workflow build_BunwayBryan.yml --limit 5
