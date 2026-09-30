@@ -55,6 +55,34 @@ class FakeApple:
             return [resource(identifier, 'TVOS_APP_STORE' if identifier.endswith('.tv') else 'IOS_APP_STORE')]
         raise AssertionError('Unexpected read path')
 
+class StrictLimitAPI:
+    """Mock live API: rejects oversized limits and optional capability limits."""
+    def __init__(self, capability_mode='accept', profile_error=None):
+        self.capability_mode = capability_mode
+        self.profile_error = profile_error
+        self.requests = []
+    def open(self, request, timeout):
+        self.requests.append(request)
+        parsed = urlparse(request.full_url)
+        query = parse_qs(parsed.query)
+        limit = int(query['limit'][0]) if 'limit' in query else None
+        if limit is not None and limit > 50: raise HTTPError(request.full_url, 400, SECRET, {}, None)
+        if parsed.path == '/v1/bundleIds':
+            identifier = query['filter[identifier]'][0]
+            data = [{'id':identifier, 'attributes':{'identifier':identifier}}]
+        elif parsed.path.endswith('/bundleIdCapabilities'):
+            if self.capability_mode == 'fail' or (self.capability_mode == 'reject_limit' and limit is not None): raise HTTPError(request.full_url, 400, SECRET, {}, None)
+            data = [{'attributes':{'capabilityType':'ICLOUD'}}]
+        elif parsed.path.endswith('/profiles'):
+            if self.profile_error: raise HTTPError(request.full_url, self.profile_error, SECRET, {}, None)
+            identifier = parsed.path.split('/')[3]
+            value = resource(identifier, 'TVOS_APP_STORE' if identifier.endswith('.tv') else 'IOS_APP_STORE')
+            value['attributes']['profileContent'] = identifier
+            data = [value]
+        else:
+            raise AssertionError('Unexpected read path')
+        return io.BytesIO(json.dumps({'data':data}).encode())
+
 class ProfileTests(unittest.TestCase):
     def summarise(self, name='Phone', value=None, kind=None, state='ACTIVE'):
         requirements = audit.TARGETS[name]
@@ -111,7 +139,7 @@ class ClientTests(unittest.TestCase):
             seen.append(request)
             return io.BytesIO(b'{"data": []}')
         client = audit.ReadClient('https://api.appstoreconnect.apple.com', SECRET, SimpleNamespace(open=open_request))
-        self.assertEqual(client.collection('/v1/bundleIds?limit=200'), [])
+        self.assertEqual(client.collection('/v1/bundleIds?limit=50'), [])
         self.assertEqual(seen[0].get_method(), 'GET')
         self.assertEqual(seen[0].get_header('Authorization'), 'Bearer ' + SECRET)
         for path in ('https://other.example/v1', '//other.example/v1', 'http://api.appstoreconnect.apple.com/v1', 'https://user@api.appstoreconnect.apple.com/v1', '/v1#secret'):
@@ -122,6 +150,16 @@ class ClientTests(unittest.TestCase):
         client = audit.ReadClient('https://api.appstoreconnect.apple.com', SECRET, SimpleNamespace(open=fail))
         with self.assertRaisesRegex(audit.AuditError, '^Metadata access returned HTTP 403\\.$') as error: client.get('/v1/bundleIds')
         self.assertNotIn(SECRET, str(error.exception))
+    def test_structured_diagnostics_allow_only_known_codes_and_parameters(self):
+        payload = {'errors':[{'code':'PARAMETER_ERROR.INVALID','detail':SECRET,'title':SECRET,'source':{'parameter':'limit','pointer':SECRET}}, {'code':SECRET,'source':{'parameter':SECRET}}, {'code':'FORBIDDEN','source':{'parameter':'filter[identifier]'}}]}
+        def fail(request, timeout): raise HTTPError(request.full_url, 400, SECRET, {'Authorization':SECRET}, io.BytesIO(json.dumps(payload).encode()))
+        client = audit.ReadClient('https://api.appstoreconnect.apple.com', SECRET, SimpleNamespace(open=fail))
+        with self.assertRaises(audit.AuditError) as error: client.get('/v1/bundleIds')
+        self.assertEqual(error.exception.diagnostics, [{'code':'PARAMETER_ERROR.INVALID','parameter':'limit'}, {'code':'FORBIDDEN','parameter':'filter[identifier]'}])
+        self.assertNotIn(SECRET, json.dumps(error.exception.diagnostics))
+    def test_oversized_error_body_does_not_produce_diagnostics(self):
+        failure = HTTPError('https://api.appstoreconnect.apple.com/v1',400,SECRET,{},io.BytesIO(b'X'*8193))
+        self.assertEqual(audit.error_diagnostics(failure), [])
     def test_redirect_handler_will_not_forward_credentials(self):
         self.assertIsNone(audit.NoRedirect().redirect_request(None, None, 307, '', {}, 'https://other.example'))
     def test_pagination_cannot_forward_authorization_to_another_host(self):
@@ -146,6 +184,51 @@ class ClientTests(unittest.TestCase):
         self.assertNotIn(SECRET, str(error.exception))
 
 class AuditTests(unittest.TestCase):
+    def live_mock(self, server):
+        client = audit.ReadClient('https://api.appstoreconnect.apple.com', SECRET, server)
+        return audit.audit(client, TEAM, decoder=lambda content: profile(content))
+    def test_every_collection_uses_conservative_limit_accepted_by_strict_api(self):
+        server = StrictLimitAPI()
+        result = self.live_mock(server)
+        self.assertTrue(result['metadataAccessSucceeded'])
+        self.assertEqual(len(server.requests), 12)
+        for request in server.requests:
+            self.assertEqual(request.get_method(), 'GET')
+            self.assertEqual(parse_qs(urlparse(request.full_url).query)['limit'], ['50'])
+        self.assertTrue(all(target['profilesVerified'] and target['capabilitiesVerified'] for target in result['targets']))
+    def test_optional_limit_rejection_retries_same_get_without_limit(self):
+        server = StrictLimitAPI(capability_mode='reject_limit')
+        result = self.live_mock(server)
+        self.assertTrue(result['metadataAccessSucceeded'])
+        self.assertEqual(result['optionalLimitRetries'], 4)
+        requests = [request for request in server.requests if '/bundleIdCapabilities' in request.full_url]
+        self.assertEqual(len(requests), 8)
+        for first, second in zip(requests[::2], requests[1::2]):
+            self.assertEqual(urlparse(first.full_url).path, urlparse(second.full_url).path)
+            self.assertEqual(parse_qs(urlparse(first.full_url).query), {'limit':['50']})
+            self.assertEqual(urlparse(second.full_url).query, '')
+            self.assertEqual(second.get_method(), 'GET')
+    def test_capability_failures_do_not_prevent_profile_reads_and_are_stage_labelled(self):
+        server = StrictLimitAPI(capability_mode='fail')
+        result = self.live_mock(server)
+        self.assertFalse(result['metadataAccessSucceeded'])
+        self.assertEqual(len([request for request in server.requests if '/bundleIdCapabilities' in request.full_url]), 8)
+        for target in result['targets']:
+            self.assertFalse(target['capabilitiesVerified']); self.assertTrue(target['profilesVerified'])
+            self.assertTrue(target['appStoreProfileRequirementsMet'])
+            self.assertEqual(target['metadataErrorStage'], 'capabilities')
+            self.assertEqual(target['metadataErrors'], [{'stage':'capabilities','message':'Metadata access returned HTTP 400.'}])
+        rendered = audit.summary(result)
+        self.assertIn('Phone capabilities: Metadata access returned HTTP 400.', rendered)
+        self.assertNotIn(SECRET, rendered); self.assertNotIn('https://', rendered)
+    def test_profile_failure_is_distinguished_and_auth_error_is_not_retried(self):
+        server = StrictLimitAPI(profile_error=403)
+        result = self.live_mock(server)
+        self.assertEqual(result['optionalLimitRetries'], 0)
+        for target in result['targets']:
+            self.assertTrue(target['capabilitiesVerified']); self.assertFalse(target['profilesVerified'])
+            self.assertEqual(target['metadataErrorStage'], 'profiles')
+            self.assertEqual(target['metadataErrors'], [{'stage':'profiles','message':'Metadata access returned HTTP 403.'}])
     def test_absent_id_is_verified_absent_and_schema_never_inferred(self):
         identifier = audit.TARGETS['Watch']['id']
         client = FakeApple(missing=[identifier])
@@ -165,7 +248,9 @@ class AuditTests(unittest.TestCase):
         client.collection = lambda _: (_ for _ in ()).throw(audit.AuditError('Metadata access returned HTTP 401.'))
         result = audit.audit(client, TEAM)
         self.assertFalse(result['metadataAccessSucceeded'])
-        for target in result['targets']: self.assertFalse(target['idVerified']); self.assertNotIn('exists', target)
+        for target in result['targets']:
+            self.assertFalse(target['idVerified']); self.assertNotIn('exists', target)
+            self.assertEqual(target['metadataErrorStage'], 'identifier_lookup')
     def test_match_uses_tree_metadata_never_blobs_or_profile_decryption(self):
         paths = []
         def get(path):

@@ -52,6 +52,23 @@ authorization to another host. Apple documents the read endpoints for
 [existing bundle capabilities](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-bundleids-_id_-bundleidcapabilities)
 and [existing bundle profiles](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-bundleids-_id_-profiles).
 
+Both of those Apple endpoint pages document a maximum `limit` of 200. This audit
+uses a conservative page size of 50 for every initial Apple collection request.
+Because live API behavior can reject an optional query parameter, an HTTP 400
+gets at most one GET-only retry per collection with only `limit` removed. All
+other filters, the host restriction, response size bound, and pagination bound
+remain enforced. Other HTTP failures are not retried by this compatibility path.
+`optionalLimitRetries` records its count; it does not infer why Apple rejected a
+request.
+
+Identifier lookup, capability metadata, and profile metadata have separate
+verification flags and fixed stage labels in `metadataErrors`. A failed
+capability request does not prevent inspection of existing profiles. Failures
+contain the endpoint category and sanitised HTTP status. Structured diagnostics
+may also contain an exact allow-listed Apple error-code enum or known query
+parameter name. Unknown values, URLs, messages, details, headers, account IDs,
+and raw error bodies are excluded; error-body parsing is bounded to 8 KiB.
+
 It inspects these exact IDs:
 
 | Target | Bundle ID | Required App Store profile entitlements |

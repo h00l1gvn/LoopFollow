@@ -5,11 +5,14 @@ import argparse, base64, json, os, plistlib, re, subprocess, time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode, urljoin, urlparse
+from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 GROUP = 'group.com.julienbell.bunway'
 CONTAINER = 'iCloud.com.julienbell.bunway'
+PAGE_LIMIT = 50
+ERROR_CODES = frozenset({'PARAMETER_ERROR.INVALID', 'PARAMETER_ERROR.UNKNOWN', 'PARAMETER_ERROR.REQUIRED', 'ENTITY_ERROR.ATTRIBUTE.INVALID', 'ENTITY_ERROR.RELATIONSHIP.INVALID', 'NOT_FOUND', 'FORBIDDEN', 'NOT_AUTHORIZED', 'ACCESS_DENIED', 'RATE_LIMIT_EXCEEDED', 'INTERNAL_ERROR', 'BAD_GATEWAY', 'UNAUTHORIZED', 'INVALID_REQUEST'})
+ERROR_PARAMETERS = frozenset({'limit', 'filter[identifier]', 'fields[bundleIdCapabilities]', 'fields[profiles]'})
 TARGETS = {
     'Phone': {'id': 'com.julienbell.bunway', 'cloud': True, 'group': True, 'push': True, 'weather': True},
     'Watch': {'id': 'com.julienbell.bunway.watchkitapp', 'cloud': True, 'group': True},
@@ -19,6 +22,32 @@ TARGETS = {
 
 class AuditError(Exception):
     """Contains only a fixed message/status; never an upstream body or credential."""
+    def __init__(self, message: str, http_status: int | None = None, diagnostics: list[dict] | None = None):
+        super().__init__(message)
+        self.http_status = http_status
+        self.diagnostics = diagnostics or []
+
+def error_diagnostics(error: HTTPError) -> list[dict]:
+    """Extract only fixed known enum/parameter values, never upstream detail."""
+    try:
+        raw = error.read(8193)
+        if len(raw) > 8192: return []
+        body = json.loads(raw)
+        errors = body.get('errors') if isinstance(body, dict) else None
+        if not isinstance(errors, list): return []
+        result = []
+        for value in errors[:5]:
+            if not isinstance(value, dict): continue
+            code = value.get('code')
+            source = value.get('source')
+            parameter = source.get('parameter') if isinstance(source, dict) else None
+            safe = {}
+            if isinstance(code, str) and code in ERROR_CODES: safe['code'] = code
+            if isinstance(parameter, str) and parameter in ERROR_PARAMETERS: safe['parameter'] = parameter
+            if safe: result.append(safe)
+        return result
+    except (AttributeError, OSError, TypeError, ValueError, UnicodeError):
+        return []
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -28,6 +57,7 @@ class ReadClient:
     def __init__(self, origin: str, token: str, opener=None):
         self.origin, self.token = origin, token
         self.opener = opener or build_opener(NoRedirect())
+        self.query_compatibility_retries = 0
     def get(self, path: str) -> dict:
         url = urljoin(self.origin + '/', path)
         parsed, expected = urlparse(url), urlparse(self.origin)
@@ -42,15 +72,28 @@ class ReadClient:
             if not isinstance(value, dict): raise AuditError('Metadata response was not a JSON object.')
             return value
         except HTTPError as error:
-            raise AuditError(f'Metadata access returned HTTP {error.code}.') from None
+            raise AuditError(f'Metadata access returned HTTP {error.code}.', http_status=error.code, diagnostics=error_diagnostics(error)) from None
         except (URLError, TimeoutError, OSError):
             raise AuditError('Metadata service could not be reached.') from None
         except (ValueError, UnicodeError):
             raise AuditError('Metadata response could not be read.') from None
     def collection(self, path: str) -> list[dict]:
         result = []
+        retried_without_limit = False
         for _ in range(20):
-            value = self.get(path)
+            try:
+                value = self.get(path)
+            except AuditError as error:
+                # Some live relationship endpoints reject an optional limit
+                # despite its documented presence. Retry only that GET once,
+                # retaining all other parameters and the same host boundary.
+                parts = urlparse(path)
+                query = parse_qsl(parts.query, keep_blank_values=True)
+                if error.http_status != 400 or retried_without_limit or not any(key == 'limit' for key, _ in query): raise
+                path = urlunparse(parts._replace(query=urlencode([(key, value) for key, value in query if key != 'limit'])))
+                retried_without_limit = True
+                self.query_compatibility_retries += 1
+                value = self.get(path)
             data = value.get('data')
             if not isinstance(data, list): raise AuditError('Metadata collection was incomplete.')
             result.extend(entry for entry in data if isinstance(entry, dict))
@@ -157,23 +200,42 @@ def match_metadata(client: ReadClient | None, owner: str) -> dict:
 def audit(apple: ReadClient, team: str, github: ReadClient | None = None, owner: str = '', decoder=decode_profile) -> dict:
     report = {'mode': 'read_only', 'releaseReadinessVerified': False, 'cloudKitProductionSchemaVerified': False, 'cloudKitNote': 'Schema and container associations require separate account verification. This audit never changes them.', 'signingIdentityVerified': False, 'targets': [], 'matchStorage': match_metadata(github, owner), 'metadataAccessSucceeded': True}
     for name, requirements in TARGETS.items():
-        identifier = requirements['id']; target = {'target': name, 'identifier': identifier, 'idVerified': False, 'appStoreProfileRequirementsMet': False}
+        identifier = requirements['id']; target = {'target': name, 'identifier': identifier, 'idVerified': False, 'capabilitiesVerified': False, 'profilesVerified': False, 'appStoreProfileRequirementsMet': False}
+        def record_error(stage: str, error: AuditError):
+            value = {'stage': stage, 'message': str(error)}
+            if error.diagnostics: value['diagnostics'] = error.diagnostics
+            target.setdefault('metadataErrors', []).append(value)
+            target.setdefault('metadataError', str(error))
+            target.setdefault('metadataErrorStage', stage)
+            report['metadataAccessSucceeded'] = False
         try:
-            resources = apple.collection('/v1/bundleIds?' + urlencode({'filter[identifier]': identifier, 'limit': 200}))
+            resources = apple.collection('/v1/bundleIds?' + urlencode({'filter[identifier]': identifier, 'limit': PAGE_LIMIT}))
             bundle = next((entry for entry in resources if entry.get('attributes', {}).get('identifier') == identifier), None)
             target['idVerified'] = True; target['exists'] = bundle is not None
-            if bundle:
-                bundle_id = quote(str(bundle['id']), safe='')
-                capabilities = apple.collection(f'/v1/bundleIds/{bundle_id}/bundleIdCapabilities?limit=200')
+        except AuditError as error:
+            record_error('identifier_lookup', error)
+            report['targets'].append(target)
+            continue
+        if bundle:
+            bundle_id = quote(str(bundle['id']), safe='')
+            try:
+                capabilities = apple.collection(f'/v1/bundleIds/{bundle_id}/bundleIdCapabilities?limit={PAGE_LIMIT}')
                 # Only capability type labels are reported; never raw settings or associated records.
                 labels = [entry.get('attributes', {}).get('capabilityType') for entry in capabilities]
                 target['capabilityTypes'] = sorted({label for label in labels if isinstance(label, str) and re.fullmatch(r'[A-Z0-9_]{1,80}', label)})
-                profiles = apple.collection(f'/v1/bundleIds/{bundle_id}/profiles?limit=200')
+                target['capabilitiesVerified'] = True
+            except AuditError as error:
+                record_error('capabilities', error)
+            # Profile reads remain useful even if the capabilities read failed.
+            try:
+                profiles = apple.collection(f'/v1/bundleIds/{bundle_id}/profiles?limit={PAGE_LIMIT}')
                 summaries = [profile_summary(profile, identifier, requirements, team, decoder) for profile in profiles]
-                target['profiles'] = summaries; target['appStoreProfileRequirementsMet'] = any(value['productionRequirementsMet'] for value in summaries)
-        except AuditError as error:
-            target['metadataError'] = str(error); report['metadataAccessSucceeded'] = False
+                target['profiles'] = summaries; target['profilesVerified'] = True
+                target['appStoreProfileRequirementsMet'] = any(value['productionRequirementsMet'] for value in summaries)
+            except AuditError as error:
+                record_error('profiles', error)
         report['targets'].append(target)
+    report['optionalLimitRetries'] = getattr(apple, 'query_compatibility_retries', 0)
     return report
 
 
@@ -183,7 +245,7 @@ def summary(report: dict) -> str:
         identity = 'present' if target.get('exists') else 'absent' if target.get('idVerified') else 'unverified'
         profile = 'verified' if target.get('appStoreProfileRequirementsMet') else 'not verified'
         lines.append(f"| {target['target']} | {identity} | {profile} |")
-        if target.get('metadataError'): lines.append(f"\n{target['target']}: {target['metadataError']}\n")
+        for error in target.get('metadataErrors', []): lines.append(f"\n{target['target']} {error['stage']}: {error['message']}\n")
     lines += ['', 'No capabilities, IDs, groups, containers, profiles, certificates, devices, or CloudKit schema were created or changed. No archive, upload, or installation was performed. Match inspection lists encrypted profile filenames only; it does not restore signing identities.', '']
     return '\n'.join(lines)
 
