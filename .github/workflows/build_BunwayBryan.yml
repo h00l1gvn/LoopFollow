@@ -1,0 +1,165 @@
+name: Build Bunway Bryan ad-hoc
+run-name: Build encrypted Bunway Bryan IPA for Production CloudKit
+
+'on':
+  workflow_dispatch:
+    inputs:
+      capabilities_ready:
+        description: Bunway capabilities, Production schema and Bryan device registration are verified
+        type: boolean
+        required: true
+        default: false
+      source_sha:
+        description: Full reviewed Bunway source commit already merged into main
+        type: string
+        required: true
+  push:
+    branches: [bunway-bryan-release]
+    paths:
+      - .github/workflows/build_BunwayBryan.yml
+      - fastlane/Fastfile
+      - fastlane/bunway/**
+      - BUNWAY_BRYAN_CI.md
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bunway-bryan-ad-hoc
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-bryan-release'
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - name: Confirm Bryan release prerequisites without printing credentials
+        id: selected
+        env:
+          CONFIRMED: ${{ (github.event_name == 'workflow_dispatch' && inputs.capabilities_ready == true) || (github.event_name == 'push' && vars.BUNWAY_BRYAN_CAPABILITIES_READY == 'true') }}
+          SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || vars.BUNWAY_BRYAN_SOURCE_SHA }}
+          BUNWAY_BRYAN_UDID: ${{ secrets.BUNWAY_BRYAN_UDID }}
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os,re,sys
+          if os.environ.get('CONFIRMED') != 'true':
+              sys.exit('Verify Bunway capabilities, Production schema, and Bryan device/profile readiness before confirming this build.')
+          source=os.environ.get('SOURCE_SHA','')
+          if not re.fullmatch(r'[0-9a-fA-F]{40}',source):
+              sys.exit('Select a full approved Bunway source commit SHA, not a branch name.')
+          if not re.fullmatch(r'(?:[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}|[0-9A-Fa-f]{40})',os.environ.get('BUNWAY_BRYAN_UDID','')):
+              sys.exit('BUNWAY_BRYAN_UDID must contain the registered hardware UDID.')
+          if not re.fullmatch(r'[0-9a-fA-F]{64}',os.environ.get('BUNWAY_ARTIFACT_KEY','')):
+              sys.exit('BUNWAY_ARTIFACT_KEY must contain a fresh private 256-bit hexadecimal artifact key.')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+              output.write('source_sha='+source.lower()+'\n')
+          PY
+
+      - name: Select Xcode 26.2
+        run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+
+      - name: Checkout isolated delivery tools
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
+
+      - name: Checkout the approved Bunway source commit
+        uses: actions/checkout@v5
+        with:
+          repository: h00l1gvn/bunway-app
+          ref: ${{ steps.selected.outputs.source_sha }}
+          token: ${{ secrets.GH_PAT }}
+          path: BunwaySource
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require selected source to be merged into Bunway main
+        env:
+          SOURCE_SHA: ${{ steps.selected.outputs.source_sha }}
+        run: git -C BunwaySource merge-base --is-ancestor "$SOURCE_SHA" refs/remotes/origin/main
+
+      - name: Regenerate Bunway targets
+        run: python3 BunwaySource/apple/generate_project.py
+
+      - name: Install pinned delivery dependencies
+        run: bundle install
+
+      - name: Select Node 24 for standard authenticated artifact encryption
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Validate profile, signed-export and encryption checks
+        run: |
+          ruby fastlane/bunway/test_verify_profiles.rb
+          ruby fastlane/bunway/test_verify_exported_ipa.rb
+          node --test fastlane/bunway/test_artifact_crypto.cjs
+          ruby fastlane/bunway/test_bryan_workflow.rb
+
+      - name: Build Bryan's Production CloudKit ad-hoc IPA
+        id: bryan_build
+        run: |
+          if ! bundle exec fastlane ios build_BunwayBryan > "$RUNNER_TEMP/bunway-bryan-build.log" 2>&1; then
+            echo "Bunway ad-hoc build failed. Check Apple capabilities, refreshed provisioning, and the approved source. Raw output was not printed; encrypted diagnostics will be preserved when available."
+            exit 1
+          fi
+          echo "Bunway ad-hoc build completed. Checking the signed export next."
+        env:
+          BUNWAY_CAPABILITIES_READY: "true"
+          BUNWAY_BRYAN_UDID: ${{ secrets.BUNWAY_BRYAN_UDID }}
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+
+      - name: Verify actual signed phone, Watch and Widget before preserving anything
+        run: ruby fastlane/bunway/verify_exported_ipa.rb BunwayBryan.ipa
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          BUNWAY_BRYAN_UDID: ${{ secrets.BUNWAY_BRYAN_UDID }}
+
+      - name: Encrypt the verified IPA with authenticated AES-256-GCM
+        run: node fastlane/bunway/artifact_crypto.cjs encrypt BunwayBryan.ipa BunwayBryan.ipa.enc
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+
+      - name: Preserve only the encrypted IPA
+        uses: actions/upload-artifact@v6
+        with:
+          name: BunwayBryan-encrypted-${{ github.run_id }}
+          path: BunwayBryan.ipa.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Encrypt failed-run diagnostics without printing them
+        id: encrypt_diagnostics
+        if: failure() && (steps.bryan_build.outcome == 'failure' || steps.bryan_build.outcome == 'success')
+        run: |
+          if [ -s "$RUNNER_TEMP/bunway-bryan-build.log" ]; then
+            node fastlane/bunway/artifact_crypto.cjs encrypt "$RUNNER_TEMP/bunway-bryan-build.log" BunwayBryan.build.log.enc
+            echo "preserved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The failed run produced no diagnostic log to preserve."
+          fi
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+
+      - name: Preserve only encrypted failure diagnostics
+        if: failure() && steps.encrypt_diagnostics.outputs.preserved == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: BunwayBryan-encrypted-diagnostics-${{ github.run_id }}
+          path: BunwayBryan.build.log.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove plaintext package and private signing/build output
+        if: always()
+        run: |
+          rm -f BunwayBryan.ipa "$RUNNER_TEMP/bunway-bryan-build.log"
+          rm -rf buildlog-bunway-bryan
