@@ -31,6 +31,8 @@ Configure these **repository variables**, which contain no secrets:
 
 The readiness flag records that an operator checked account setup. It cannot create or verify a CloudKit schema by itself. Downloaded profiles and the final exported app receive independent checks, but live CloudKit sharing and device installation still need their own tests.
 
+For the 0.4.1 approval-screen update, select the reviewed source already merged into private Bunway main after Store package signing completes. Keep the Store and ad-hoc Match profile writes sequential. The local installer must compare the package's marketing version and exact build with independently expected release coordinates before updating the verified hardware. An interrupted installation and a failed installed-app metadata query leave the actual installed version unresolved; they do not authorize uninstalling the existing app or resetting pairing.
+
 ## Selective initial run
 
 The first run uses an explicitly named branch push. GitHub's manual-dispatch discovery generally requires a workflow on the default branch; this path does not depend on first merging the workflow into LoopFollow's main branch. See GitHub's [workflow trigger documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch).
