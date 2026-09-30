@@ -29,6 +29,17 @@ signing. It reuses the reviewed Node 24 AES-256-GCM helper from `BUNWAY_BRYAN_CI
 unchanged. Each encrypted file uses a fresh random nonce. No key is generated,
 printed, passed in a command argument, or committed by this workflow.
 
+Configure `BUNWAY_PHONE_TESTFLIGHT_GROUP_ID` and `BUNWAY_TV_TESTFLIGHT_GROUP_ID` as
+private repository secrets using the existing group identifiers from the canonical
+local handoff. Do not place their values in public source or documentation. The
+workflow checks the selected group's identifier shape before any build. After
+upload/processing, the release lane reads version/build from the actual IPA,
+verifies the group belongs to the exact app and is internal, selects only that
+exact valid unexpired build, assigns it if absent, then reads back the actual
+group/build relationship. It does not create groups, add testers, submit external
+beta review, or log group names/identifiers or tester details. An uncertain POST
+is resolved by bounded relationship reads rather than repeating the mutation.
+
 ## Exact encrypted outputs
 
 | Job | Artifact name | Only uploaded file |
@@ -71,6 +82,7 @@ ruby fastlane/bunway/test_verify_exported_ipa.rb
 node --test fastlane/bunway/test_artifact_crypto.cjs
 ruby fastlane/bunway/test_bryan_workflow.rb
 ruby fastlane/bunway/test_store_workflow.rb
+ruby fastlane/bunway/test_testflight_groups.rb
 ```
 
 The Store tests exercise source/key gates, exact encrypted artifact paths,

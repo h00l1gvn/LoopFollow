@@ -42,10 +42,12 @@ jobs:
             lane: BunwayPhone
             ipa: BunwayPhone.ipa
             buildlog: buildlog-bunway-phone
+            group_secret: BUNWAY_PHONE_TESTFLIGHT_GROUP_ID
           - platform: tvos
             lane: BunwayTV
             ipa: BunwayTV.ipa
             buildlog: buildlog-bunway-tv
+            group_secret: BUNWAY_TV_TESTFLIGHT_GROUP_ID
     steps:
       - name: Confirm Bunway release prerequisites without printing credentials
         id: selected
@@ -53,6 +55,7 @@ jobs:
           CONFIRMED: ${{ (github.event_name == 'workflow_dispatch' && inputs.capabilities_ready == true) || (github.event_name == 'push' && vars.BUNWAY_CAPABILITIES_READY == 'true') }}
           SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || vars.BUNWAY_SOURCE_SHA }}
           BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+          BUNWAY_TESTFLIGHT_GROUP_ID: ${{ secrets[matrix.group_secret] }}
         run: |
           python3 - <<'PY'
           import os,re,sys
@@ -63,6 +66,8 @@ jobs:
               sys.exit('Select a full reviewed Bunway source commit SHA, not a branch name.')
           if not re.fullmatch(r'[0-9a-fA-F]{64}',os.environ.get('BUNWAY_ARTIFACT_KEY','')):
               sys.exit('Configure the independent private 256-bit artifact encryption key before delivery.')
+          if not re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}',os.environ.get('BUNWAY_TESTFLIGHT_GROUP_ID','')):
+              sys.exit('Configure the existing internal TestFlight group identifier securely before delivery.')
           with open(os.environ['GITHUB_OUTPUT'],'a') as output:
               output.write('source_sha='+source.lower()+'\n')
           PY
@@ -107,6 +112,7 @@ jobs:
           ruby fastlane/bunway/test_verify_profiles.rb
           node --test fastlane/bunway/test_artifact_crypto.cjs
           ruby fastlane/bunway/test_store_workflow.rb
+          ruby fastlane/bunway/test_testflight_groups.rb
 
       - name: Build and sign Bunway without printing raw output
         id: store_build
@@ -156,6 +162,8 @@ jobs:
           FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
           FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          BUNWAY_PHONE_TESTFLIGHT_GROUP_ID: ${{ secrets.BUNWAY_PHONE_TESTFLIGHT_GROUP_ID }}
+          BUNWAY_TV_TESTFLIGHT_GROUP_ID: ${{ secrets.BUNWAY_TV_TESTFLIGHT_GROUP_ID }}
 
       - name: Encrypt failed-run Fastlane and Xcode diagnostics
         id: encrypt_diagnostics

@@ -23,8 +23,8 @@ class BunwayStoreWorkflowTests < Minitest::Test
   def test_matrix_and_lanes_include_only_phone_and_tv
     matrix=workflow.fetch('jobs').fetch('build').fetch('strategy').fetch('matrix').fetch('include')
     assert_equal [
-      {'platform'=>'ios','lane'=>'BunwayPhone','ipa'=>'BunwayPhone.ipa','buildlog'=>'buildlog-bunway-phone'},
-      {'platform'=>'tvos','lane'=>'BunwayTV','ipa'=>'BunwayTV.ipa','buildlog'=>'buildlog-bunway-tv'}
+      {'platform'=>'ios','lane'=>'BunwayPhone','ipa'=>'BunwayPhone.ipa','buildlog'=>'buildlog-bunway-phone','group_secret'=>'BUNWAY_PHONE_TESTFLIGHT_GROUP_ID'},
+      {'platform'=>'tvos','lane'=>'BunwayTV','ipa'=>'BunwayTV.ipa','buildlog'=>'buildlog-bunway-tv','group_secret'=>'BUNWAY_TV_TESTFLIGHT_GROUP_ID'}
     ],matrix
     lanes=steps.select { |entry| entry['run'].to_s.include?('bundle exec fastlane') }
     assert_equal 2,lanes.length
@@ -87,7 +87,12 @@ class BunwayStoreWorkflowTests < Minitest::Test
     consumers.each { |entry| assert_equal '${{ secrets.BUNWAY_ARTIFACT_KEY }}',entry['env']['BUNWAY_ARTIFACT_KEY'] }
     node=steps.find { |entry| entry['uses'].to_s.start_with?('actions/setup-node@') }
     assert_equal '24',node.fetch('with').fetch('node-version')
-    assert_equal step('store_build')['env'],step('store_upload')['env']
+    assert_equal step('store_build')['env'],step('store_upload')['env'].reject { |name,_value| name.end_with?('TESTFLIGHT_GROUP_ID') }
+    assert_equal '${{ secrets[matrix.group_secret] }}',step('selected')['env']['BUNWAY_TESTFLIGHT_GROUP_ID']
+    ['BUNWAY_PHONE_TESTFLIGHT_GROUP_ID','BUNWAY_TV_TESTFLIGHT_GROUP_ID'].each do |name|
+      assert_equal '${{ secrets.'+name+' }}',step('store_upload')['env'][name]
+      refute step('store_build')['env'].key?(name)
+    end
     steps.each do |entry|
       refute_includes entry['run'].to_s,'${{ secrets.'
       refute_includes entry['run'].to_s,'$BUNWAY_ARTIFACT_KEY'
@@ -97,7 +102,7 @@ class BunwayStoreWorkflowTests < Minitest::Test
   def selection(overrides={})
     Dir.mktmpdir('bunway-store-preflight-') do |directory|
       output=File.join(directory,'output')
-      env={'CONFIRMED'=>'true','SOURCE_SHA'=>'A'*40,'BUNWAY_ARTIFACT_KEY'=>'12'*32,'GITHUB_OUTPUT'=>output}.merge(overrides)
+      env={'CONFIRMED'=>'true','SOURCE_SHA'=>'A'*40,'BUNWAY_ARTIFACT_KEY'=>'12'*32,'BUNWAY_TESTFLIGHT_GROUP_ID'=>'11111111-2222-3333-4444-555555555555','GITHUB_OUTPUT'=>output}.merge(overrides)
       stdout,stderr,status=Open3.capture3(env,'/bin/bash','-c',step('selected')['run'])
       [stdout,stderr,status,File.exist?(output) ? File.read(output) : nil]
     end
@@ -111,10 +116,11 @@ class BunwayStoreWorkflowTests < Minitest::Test
   end
 
   def test_selection_rejects_unready_invalid_sha_and_key_without_leaks
-    [{'CONFIRMED'=>'false'},{'SOURCE_SHA'=>'main'},{'SOURCE_SHA'=>'a'*39},{'BUNWAY_ARTIFACT_KEY'=>'synthetic-private-value'}].each do |override|
+    [{'CONFIRMED'=>'false'},{'SOURCE_SHA'=>'main'},{'SOURCE_SHA'=>'a'*39},{'BUNWAY_ARTIFACT_KEY'=>'synthetic-private-value'},{'BUNWAY_TESTFLIGHT_GROUP_ID'=>'missing-private-group'}].each do |override|
       stdout,stderr,status,output=selection(override)
       refute status.success?; assert_nil output; assert_empty stdout
       refute_includes stderr,'synthetic-private-value'; refute_includes stderr,'12'*32
+      refute_includes stderr,'missing-private-group'
     end
   end
 

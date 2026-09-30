@@ -11,6 +11,7 @@
 #
 
 require_relative "bunway/verify_profiles"
+require_relative "bunway/testflight_groups"
 
 default_platform(:ios)
 
@@ -492,10 +493,15 @@ platform :ios do
 
   desc "Upload Bunway iPhone, iPad and embedded Watch/widget to TestFlight"
   lane :release_BunwayPhone do
+    group_id = BunwayTestFlightGroups.validate_group_id!(ENV["BUNWAY_PHONE_TESTFLIGHT_GROUP_ID"])
+    coordinates = BunwayTestFlightGroups.package_coordinates("BunwayPhone.ipa")
     api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
     upload_to_testflight(api_key: api_key, app_identifier: "com.julienbell.bunway", app_platform: "ios",
                          ipa: "BunwayPhone.ipa", skip_waiting_for_build_processing: false,
                          distribute_external: false)
+    BunwayTestFlightGroups.assign!(identifier: "com.julienbell.bunway", group_id: group_id,
+                                  version: coordinates[:version], number: coordinates[:number], platform: "IOS")
+    UI.success("Verified the exact Bunway phone build is available to its existing internal TestFlight group.")
   end
 end
 
@@ -668,10 +674,15 @@ platform :tvos do
 
   desc "Upload Bunway Apple TV to TestFlight"
   lane :release_BunwayTV do
+    group_id = BunwayTestFlightGroups.validate_group_id!(ENV["BUNWAY_TV_TESTFLIGHT_GROUP_ID"])
+    coordinates = BunwayTestFlightGroups.package_coordinates("BunwayTV.ipa")
     api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
     upload_to_testflight(api_key: api_key, app_identifier: "com.julienbell.bunway.tv",
                          ipa: "BunwayTV.ipa", skip_waiting_for_build_processing: false,
                          distribute_external: false)
+    BunwayTestFlightGroups.assign!(identifier: "com.julienbell.bunway.tv", group_id: group_id,
+                                  version: coordinates[:version], number: coordinates[:number], platform: "TV_OS")
+    UI.success("Verified the exact Bunway TV build is available to its existing internal TestFlight group.")
   end
 end
 
