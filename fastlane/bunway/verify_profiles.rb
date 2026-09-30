@@ -36,7 +36,10 @@ module BunwayProfileCheck
     failures << 'development-only signing' if entitlements['get-task-allow'] == true && environment == 'Production'
     failures << 'missing App Group' if group && !Array(entitlements['com.apple.security.application-groups']).include?(GROUP)
     if cloud
-      failures << 'missing CloudKit service' unless Array(entitlements['com.apple.developer.icloud-services']).include?('CloudKit')
+      # A profile grants permission; TN2415 shows this iCloud grant as '*'.
+      # The signed binary validator still requires an explicit CloudKit claim.
+      services = Array(entitlements['com.apple.developer.icloud-services'])
+      failures << 'missing CloudKit service' unless services.include?('CloudKit') || services.include?('*')
       containers = Array(entitlements['com.apple.developer.icloud-container-identifiers']) + Array(entitlements['com.apple.developer.icloud-container-development-container-identifiers'])
       failures << 'missing CloudKit container' unless containers.include?(CONTAINER)
       available = Array(entitlements['com.apple.developer.icloud-container-environment'])

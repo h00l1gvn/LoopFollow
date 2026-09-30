@@ -17,6 +17,24 @@ class BunwayProfileTests < Minitest::Test
   def test_valid_distribution_profile
     assert check(profile)
   end
+  def test_icloud_profile_wildcard_permission_authorizes_cloudkit
+    ['*', ['*']].each do |permission|
+      value=profile; value['Entitlements']['com.apple.developer.icloud-services']=permission
+      assert check(value)
+    end
+  end
+  def test_icloud_permission_must_exist_and_cannot_replace_other_requirements
+    [nil, [], ['CloudDocuments'], ['CloudKit-Anonymous']].each do |permission|
+      value=profile; value['Entitlements']['com.apple.developer.icloud-services']=permission
+      assert_match(/missing CloudKit service/,assert_raises(RuntimeError){check(value)}.message)
+    end
+    value=profile; value['Entitlements']['com.apple.developer.icloud-services']='*'
+    value['Entitlements']['com.apple.developer.icloud-container-identifiers']=['*']
+    assert_match(/missing CloudKit container/,assert_raises(RuntimeError){check(value)}.message)
+    value=profile; value['Entitlements']['com.apple.developer.icloud-services']=['*']
+    value['Entitlements']['com.apple.developer.icloud-container-environment']=['*']
+    assert_match(/Production environment/,assert_raises(RuntimeError){check(value)}.message)
+  end
   def test_missing_group_or_development_environment_rejected
     value=profile; value['Entitlements'].delete('com.apple.security.application-groups')
     assert_match(/missing App Group/,assert_raises(RuntimeError){check(value)}.message)

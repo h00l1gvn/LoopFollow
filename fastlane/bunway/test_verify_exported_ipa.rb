@@ -39,6 +39,27 @@ class BunwayExportTests < Minitest::Test
     assert BunwayExportCheck.validate_versions(infos)
   end
 
+  def test_profile_wildcard_grant_allows_only_a_concrete_signed_cloudkit_claim
+    BunwayExportCheck::IDS.first(2).each do |identifier|
+      ['*', ['*']].each do |permission|
+        value = profile(identifier)
+        value['Entitlements']['com.apple.developer.icloud-services'] = permission
+        assert BunwayExportCheck.validate_profile(value, identifier, TEAM, DEVICE)
+        assert BunwayExportCheck.validate_signed(signed(identifier), identifier, TEAM, value)
+      end
+    end
+  end
+
+  def test_signed_cloudkit_cannot_be_wildcard_missing_or_documents_only
+    BunwayExportCheck::IDS.first(2).each do |identifier|
+      ['*', ['*'], nil, ['CloudDocuments'], ['CloudKit-Anonymous']].each do |permission|
+        value = signed(identifier)
+        value['com.apple.developer.icloud-services'] = permission
+        assert_match(/missing CloudKit service/, assert_raises(BunwayExportCheck::Invalid) { check_signed(value, identifier) }.message)
+      end
+    end
+  end
+
   def test_legacy_app_identifier_prefix_is_allowed_only_if_profile_matches
     assert check_signed(signed(BunwayExportCheck::IDS.first))
     value = signed(BunwayExportCheck::IDS.first)

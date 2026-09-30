@@ -32,6 +32,16 @@ The readiness marker records that account setup/schema work was done. It is not 
 
 The export option `iCloudContainerEnvironment:Production` makes the intended signed environment explicit for TestFlight and ad-hoc. Verify the final exported phone and embedded Watch/Widget signed entitlements as well; a downloaded profile describes permitted capabilities, while the signed binary describes what was actually requested.
 
+An iCloud service permission in a provisioning profile can be `*` (a string or
+array entry), which authorizes the app to claim CloudKit. Apple's
+[TN2415 profile example](https://developer.apple.com/library/archive/technotes/tn2415/_index.html)
+shows that exact permission, and
+[TN3125](https://developer.apple.com/documentation/technotes/tn3125-inside-code-signing-provisioning-profiles)
+explains profile permission allowlists. The profile validator accepts this service
+grant while still requiring the exact Bunway container and Production environment.
+The final signed-binary validator requires a concrete `CloudKit` claim and rejects
+a wildcard, missing service, or documents-only claim.
+
 ## Bryan’s direct installation without TestFlight
 
 `bundle exec fastlane ios build_BunwayBryan` prepares **BunwayBryan.ipa** using ad-hoc distribution and the same Production CloudKit container. It builds only; it does not upload or install. This lane has the three per-target profile/export mappings, checks the phone profile includes `BUNWAY_BRYAN_UDID`, and exports with Production explicitly selected.
