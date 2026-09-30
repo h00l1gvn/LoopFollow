@@ -407,6 +407,34 @@ platform :ios do
       distribute_external: false
     )
   end
+
+  desc "Build and sign Bunway for iPhone and iPad"
+  lane :build_BunwayPhone do
+    setup_ci if ENV['CI']
+    identifier = "com.julienbell.bunway"
+    project_path = File.join(GITHUB_WORKSPACE, "BunwaySource", "apple", "Bunway.xcodeproj")
+    api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
+    previous = latest_testflight_build_number(app_identifier: identifier, platform: "ios", api_key: api_key, initial_build_number: 0)
+    match(type: "appstore", platform: "ios", readonly: false,
+          git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+          app_identifier: [identifier])
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    update_project_team(path: project_path, teamid: TEAMID)
+    update_code_signing_settings(path: project_path, profile_name: mapping[identifier],
+                                 code_sign_identity: "Apple Distribution", targets: ["BunwayPhone"])
+    gym(project: project_path, scheme: "BunwayPhone", export_method: "app-store",
+        output_name: "BunwayPhone.ipa", configuration: "Release", destination: "generic/platform=iOS",
+        xcargs: "CURRENT_PROJECT_VERSION=#{[previous + 1, 3].max}", buildlog_path: "buildlog-bunway-phone",
+        export_options: {provisioningProfiles: {identifier => mapping[identifier]}})
+  end
+
+  desc "Upload Bunway iPhone to TestFlight"
+  lane :release_BunwayPhone do
+    api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
+    upload_to_testflight(api_key: api_key, app_identifier: "com.julienbell.bunway", app_platform: "ios",
+                         ipa: "BunwayPhone.ipa", skip_waiting_for_build_processing: false,
+                         distribute_external: false)
+  end
 end
 
 platform :tvos do
@@ -551,6 +579,34 @@ platform :tvos do
       skip_waiting_for_build_processing: false,
       distribute_external: false
     )
+  end
+
+  desc "Build and sign Bunway for Apple TV"
+  lane :build_BunwayTV do
+    setup_ci if ENV['CI']
+    identifier = "com.julienbell.bunway.tv"
+    project_path = File.join(GITHUB_WORKSPACE, "BunwaySource", "apple", "Bunway.xcodeproj")
+    api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
+    previous = latest_testflight_build_number(app_identifier: identifier, platform: "appletvos", api_key: api_key, initial_build_number: 0)
+    match(type: "appstore", platform: "tvos", readonly: false,
+          git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+          app_identifier: [identifier])
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    update_project_team(path: project_path, teamid: TEAMID)
+    update_code_signing_settings(path: project_path, profile_name: mapping[identifier],
+                                 code_sign_identity: "Apple Distribution", targets: ["BunwayTV"])
+    gym(project: project_path, scheme: "BunwayTV", export_method: "app-store",
+        output_name: "BunwayTV.ipa", configuration: "Release", destination: "generic/platform=tvOS",
+        xcargs: "CURRENT_PROJECT_VERSION=#{[previous + 1, 3].max}", buildlog_path: "buildlog-bunway-tv",
+        export_options: {provisioningProfiles: {identifier => mapping[identifier]}})
+  end
+
+  desc "Upload Bunway Apple TV to TestFlight"
+  lane :release_BunwayTV do
+    api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
+    upload_to_testflight(api_key: api_key, app_identifier: "com.julienbell.bunway.tv",
+                         ipa: "BunwayTV.ipa", skip_waiting_for_build_processing: false,
+                         distribute_external: false)
   end
 end
 

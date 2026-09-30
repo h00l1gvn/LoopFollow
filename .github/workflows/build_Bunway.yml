@@ -1,0 +1,66 @@
+name: Build Bunway
+run-name: Build and deliver Bunway iPhone and Apple TV to TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [bunway-release]
+    paths:
+      - .github/workflows/build_Bunway.yml
+      - fastlane/Fastfile
+
+jobs:
+  build:
+    runs-on: macos-26
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ios
+            lane: BunwayPhone
+          - platform: tvos
+            lane: BunwayTV
+    steps:
+      - name: Select Xcode 26
+        run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+
+      - name: Checkout delivery tools
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Checkout Bunway source
+        uses: actions/checkout@v5
+        with:
+          repository: h00l1gvn/bunway-app
+          token: ${{ secrets.GH_PAT }}
+          path: BunwaySource
+
+      - name: Install delivery dependencies
+        run: bundle install
+
+      - name: Build and sign Bunway
+        run: bundle exec fastlane ${{ matrix.platform }} build_${{ matrix.lane }}
+        env: &apple_credentials
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+
+      - name: Upload Bunway to TestFlight
+        run: bundle exec fastlane ${{ matrix.platform }} release_${{ matrix.lane }}
+        env: *apple_credentials
+
+      - name: Preserve build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: Bunway-${{ matrix.lane }}-build
+          path: |
+            buildlog-bunway-${{ matrix.platform }}
+            BunwayPhone.ipa
+            BunwayTV.ipa
