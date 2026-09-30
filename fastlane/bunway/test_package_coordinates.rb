@@ -1,4 +1,3 @@
-require 'minitest/autorun'
 require 'tmpdir'
 require 'fileutils'
 require 'fastlane/version'
@@ -8,7 +7,49 @@ require_relative 'testflight_groups'
 
 # Real locked SDK regression; no mocked analyser and no Apple/network calls.
 # BUNWAY_TEST_IPA may point to an owner-only local IPA for an additional run.
-class BunwayPackageCoordinatesTests < Minitest::Test
+class BunwayPackageCoordinatesTests
+  class AssertionFailed < StandardError; end
+
+  # This test runs under the release bundle, which contains no test framework.
+  # Keep failures generic: an optional private IPA path must not enter CI output.
+  def assert_equal(expected, actual)
+    @assertions += 1
+    raise AssertionFailed unless expected == actual
+  end
+
+  def refute(value)
+    assert_equal false, !!value
+  end
+
+  def assert_raises(type)
+    @assertions += 1
+    begin
+      yield
+    rescue type => error
+      return error
+    end
+    raise AssertionFailed
+  end
+
+  def run
+    @assertions = 0
+    tests = methods.grep(/^test_/).sort
+    failures = 0
+    tests.each do |test|
+      begin
+        setup
+        public_send(test)
+      rescue StandardError
+        failures += 1
+        warn "Failed: #{test} (package coordinate check failed; private details omitted)"
+      ensure
+        teardown
+      end
+    end
+    puts "#{tests.length} runs, #{@assertions} assertions, #{failures} failures, 0 errors, 0 skips"
+    failures.zero?
+  end
+
   def setup
     @directory = Dir.mktmpdir('bunway-package-coordinates-')
     @workspace = File.join(@directory, 'workspace')
@@ -84,6 +125,8 @@ class BunwayPackageCoordinatesTests < Minitest::Test
     write_fixture(invalid, '', '5')
     error = assert_raises(BunwayTestFlightGroups::Invalid) { BunwayTestFlightGroups.package_coordinates(invalid) }
     assert_equal 'The Bunway IPA must contain its exact version and build number.', error.message
-    refute_includes error.message, @directory
+    refute error.message.include?(@directory)
   end
 end
+
+exit(BunwayPackageCoordinatesTests.new.run ? 0 : 1)
