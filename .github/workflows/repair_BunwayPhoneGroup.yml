@@ -1,0 +1,130 @@
+name: Repair Bunway Phone TestFlight Group
+run-name: Verify and repair the existing Bunway phone 0.4.1 (7) group
+
+'on':
+  workflow_dispatch:
+    inputs:
+      confirm_existing_build:
+        description: Verify or assign only the existing processed Bunway phone 0.4.1 (7) build
+        type: boolean
+        required: true
+        default: false
+  push:
+    branches: [bunway-phone-group-repair]
+    paths:
+      - .github/workflows/repair_BunwayPhoneGroup.yml
+      - fastlane/Fastfile
+      - fastlane/bunway/phone_group_repair.rb
+      - fastlane/bunway/test_phone_group_repair.rb
+      - fastlane/bunway/test_phone_group_workflow.rb
+      - fastlane/bunway/test_phone_group_sdk.rb
+      - BUNWAY_PHONE_GROUP_REPAIR.md
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bunway-phone-group-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-phone-group-repair' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - name: Confirm the exact existing build and private prerequisites
+        env:
+          CONFIRMED: ${{ (github.event_name == 'workflow_dispatch' && inputs.confirm_existing_build == true) || (github.event_name == 'push' && vars.BUNWAY_CAPABILITIES_READY == 'true') }}
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+          BUNWAY_PHONE_TESTFLIGHT_GROUP_ID: ${{ secrets.BUNWAY_PHONE_TESTFLIGHT_GROUP_ID }}
+        run: |
+          python3 - <<'PY'
+          import os,re,sys
+          if os.environ.get('CONFIRMED') != 'true':
+              sys.exit('Confirm the reviewed existing-build group repair before running it.')
+          if not re.fullmatch(r'[0-9a-fA-F]{64}',os.environ.get('BUNWAY_ARTIFACT_KEY','')):
+              sys.exit('The independent private artifact key is required.')
+          if not re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}',os.environ.get('BUNWAY_PHONE_TESTFLIGHT_GROUP_ID','')):
+              sys.exit('Configure the existing intended internal group securely.')
+          PY
+
+      - name: Checkout the reviewed delivery tools without persisting credentials
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install the existing pinned delivery dependencies
+        run: bundle install
+
+      - name: Select Node 24 for authenticated private diagnostics
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Check selection, mutation and privacy boundaries
+        run: |
+          ruby fastlane/bunway/test_testflight_groups.rb
+          ruby fastlane/bunway/test_phone_group_repair.rb
+          ruby fastlane/bunway/test_phone_group_workflow.rb
+          bundle exec ruby fastlane/bunway/test_phone_group_sdk.rb
+          node --test fastlane/bunway/test_artifact_crypto.cjs
+
+      - name: Read first and repair only a missing exact build relationship
+        id: group_repair
+        env:
+          BUNWAY_GROUP_REPAIR_READY: "true"
+          BUNWAY_GROUP_REPAIR_VERSION: "0.4.1"
+          BUNWAY_GROUP_REPAIR_BUILD: "7"
+          BUNWAY_GROUP_REPAIR_DIAGNOSTIC_PATH: ${{ runner.temp }}/bunway-phone-group-repair-api.log
+          BUNWAY_PHONE_TESTFLIGHT_GROUP_ID: ${{ secrets.BUNWAY_PHONE_TESTFLIGHT_GROUP_ID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+        run: |
+          umask 077
+          if ! bundle exec fastlane ios repair_BunwayPhoneGroup > "$RUNNER_TEMP/bunway-phone-group-repair-cli.log" 2>&1; then
+            echo "The exact existing-build group repair could not be confirmed. Authenticated encrypted diagnostics preserve the actual API fields and upstream error when available."
+            exit 1
+          fi
+          echo "The existing processed Bunway phone 0.4.1 (7) build is verified in its intended internal group. No package was uploaded."
+
+      - name: Encrypt the exact private GET and mutation diagnostics
+        id: encrypt_diagnostics
+        if: always() && (steps.group_repair.outcome == 'success' || steps.group_repair.outcome == 'failure')
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import os,sys,tarfile
+          from pathlib import Path
+          try:
+              root=Path(os.environ['RUNNER_TEMP'])
+              sources=[(root/'bunway-phone-group-repair-api.log','api.log'),
+                       (root/'bunway-phone-group-repair-cli.log','cli.log')]
+              sources=[(path,name) for path,name in sources if path.is_file() and not path.is_symlink()]
+              if not sources: sys.exit('No group repair diagnostics were available.')
+              output=root/'bunway-phone-group-repair-diagnostics.tar.gz'
+              with tarfile.open(output,'w:gz') as archive:
+                  for path,name in sources: archive.add(path,arcname=name,recursive=False)
+              output.chmod(0o600)
+          except Exception:
+              sys.exit('Private diagnostic collection failed; no raw data was printed.')
+          PY
+          node fastlane/bunway/artifact_crypto.cjs encrypt "$RUNNER_TEMP/bunway-phone-group-repair-diagnostics.tar.gz" BunwayPhoneGroup.diagnostics.tar.gz.enc
+          echo "preserved=true" >> "$GITHUB_OUTPUT"
+
+      - name: Preserve authenticated encrypted diagnostics only
+        if: always() && steps.encrypt_diagnostics.outputs.preserved == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: Bunway-PhoneGroup-repair-encrypted-${{ github.run_id }}
+          path: BunwayPhoneGroup.diagnostics.tar.gz.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove plaintext repair diagnostics
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/bunway-phone-group-repair-api.log" "$RUNNER_TEMP/bunway-phone-group-repair-cli.log" "$RUNNER_TEMP/bunway-phone-group-repair-diagnostics.tar.gz"

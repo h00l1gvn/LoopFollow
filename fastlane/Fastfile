@@ -12,6 +12,7 @@
 
 require_relative "bunway/verify_profiles"
 require_relative "bunway/testflight_groups"
+require_relative "bunway/phone_group_repair"
 
 default_platform(:ios)
 
@@ -489,6 +490,26 @@ platform :ios do
         output_name: "BunwayBryan.ipa", configuration: "Release", destination: "generic/platform=iOS",
         xcargs: "CURRENT_PROJECT_VERSION=#{[previous + 1, source_build].max}", buildlog_path: "buildlog-bunway-bryan",
         export_options: {iCloudContainerEnvironment: "Production", provisioningProfiles: signing_targets.keys.to_h { |bundle_id| [bundle_id, mapping[bundle_id]] }})
+  end
+
+  desc "Repair only the existing Bunway phone 0.4.1 (7) internal group relationship"
+  lane :repair_BunwayPhoneGroup do
+    UI.user_error!("Confirm the reviewed Bunway group-only repair before running it.") unless ENV["BUNWAY_GROUP_REPAIR_READY"] == "true"
+    version = ENV.fetch("BUNWAY_GROUP_REPAIR_VERSION")
+    number = ENV.fetch("BUNWAY_GROUP_REPAIR_BUILD")
+    UI.user_error!("The reviewed group-only repair requires existing build 0.4.1 (7).") unless version == "0.4.1" && number == "7"
+    UI.user_error!("The existing App Store Connect credentials are required.") unless [FASTLANE_KEY_ID, FASTLANE_ISSUER_ID, FASTLANE_KEY].all? { |value| value && !value.empty? }
+    group_id = BunwayTestFlightGroups.validate_group_id!(ENV["BUNWAY_PHONE_TESTFLIGHT_GROUP_ID"])
+    recorder = BunwayPhoneGroupRepair::Recorder.new(
+      path: ENV.fetch("BUNWAY_GROUP_REPAIR_DIAGNOSTIC_PATH"), directory: ENV.fetch("RUNNER_TEMP"),
+      secrets: [FASTLANE_KEY_ID, FASTLANE_ISSUER_ID, FASTLANE_KEY, ENV["BUNWAY_PHONE_TESTFLIGHT_GROUP_ID"]])
+    begin
+      app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
+      BunwayPhoneGroupRepair.run!(version: version, number: number, group_id: group_id, recorder: recorder)
+      UI.success("Verified the existing processed Bunway phone 0.4.1 (7) build is assigned to its intended internal group.")
+    ensure
+      recorder.close
+    end
   end
 
   desc "Upload Bunway iPhone, iPad and embedded Watch/widget to TestFlight"
