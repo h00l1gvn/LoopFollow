@@ -1,13 +1,21 @@
 name: Build Bunway
-run-name: Build and deliver Bunway 0.3 iPhone and Apple TV to TestFlight
+run-name: Build and deliver Bunway 0.4 iPhone, iPad, Watch, widgets and Apple TV
 
 on:
   workflow_dispatch:
+    inputs:
+      capabilities_ready:
+        description: Bunway IDs, App Group, CloudKit Production schema and profiles are ready
+        type: boolean
+        required: true
+        default: false
   push:
     branches: [bunway-release]
     paths:
       - .github/workflows/build_Bunway.yml
       - fastlane/Fastfile
+      - fastlane/bunway/**
+      - BUNWAY_RELEASE_SETUP.md
 
 jobs:
   build:
@@ -23,6 +31,15 @@ jobs:
           - platform: tvos
             lane: BunwayTV
     steps:
+      - name: Confirm Bunway 0.4 release prerequisites
+        env:
+          CONFIRMED: ${{ github.event.inputs.capabilities_ready == 'true' || vars.BUNWAY_CAPABILITIES_READY == 'true' }}
+        run: |
+          if [ "$CONFIRMED" != "true" ]; then
+            echo "Confirm BUNWAY_RELEASE_SETUP.md prerequisites and set capabilities_ready or BUNWAY_CAPABILITIES_READY before delivery."
+            exit 1
+          fi
+
       - name: Select Xcode 26
         run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
 
@@ -38,12 +55,19 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           path: BunwaySource
 
+      - name: Regenerate Bunway targets
+        run: python3 BunwaySource/apple/generate_project.py
+
       - name: Install delivery dependencies
         run: bundle install
+
+      - name: Validate profile verification logic
+        run: ruby fastlane/bunway/test_verify_profiles.rb
 
       - name: Build and sign Bunway
         run: bundle exec fastlane ${{ matrix.platform }} build_${{ matrix.lane }}
         env: &apple_credentials
+          BUNWAY_CAPABILITIES_READY: "true"
           TEAMID: ${{ secrets.TEAMID }}
           GH_PAT: ${{ secrets.GH_PAT }}
           FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
