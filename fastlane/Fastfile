@@ -517,7 +517,7 @@ platform :tvos do
       code_sign_identity: "Apple Distribution",
       targets: ["RabbitLoadTV"]
     )
-    gym(
+    built_ipa_path = gym(
       project: project_path,
       export_method: "app-store",
       scheme: "RabbitLoadTV",
@@ -534,7 +534,7 @@ platform :tvos do
     )
     # Inspect the exported app, since agvtool cannot read the generated project.
     require "fastlane_core/ipa_file_analyser"
-    built_info = FastlaneCore::IpaFileAnalyser.fetch_info_plist_file(File.expand_path("MooByteTV.ipa"))
+    built_info = FastlaneCore::IpaFileAnalyser.fetch_info_plist_file(built_ipa_path)
     built_build_number = built_info["CFBundleVersion"].to_s
     unless built_info["CFBundleIdentifier"] == MOOBYTE_TV_IDENTIFIER && built_build_number == next_build_number.to_s
       UI.user_error!("MooByte TV package build #{built_build_number.inspect} does not match selected build #{next_build_number}; refusing upload")
