@@ -113,6 +113,7 @@ jobs:
           node --test fastlane/bunway/test_artifact_crypto.cjs
           ruby fastlane/bunway/test_store_workflow.rb
           ruby fastlane/bunway/test_testflight_groups.rb
+          bundle exec ruby fastlane/bunway/test_package_coordinates.rb
 
       - name: Build and sign Bunway without printing raw output
         id: store_build

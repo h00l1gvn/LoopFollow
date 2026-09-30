@@ -32,6 +32,9 @@ module BunwayTestFlightGroups
   end
 
   def self.package_coordinates(path, analyser: FastlaneCore::IpaFileAnalyser)
+    # Fastfile lane code can run inside fastlane/, while gym exports at the CI
+    # workspace root. Resolve before calling the SDK outside an action wrapper.
+    path = package_path(path)
     version = analyser.fetch_app_version(path).to_s
     number = analyser.fetch_app_build(path).to_s
     pattern = /\A[0-9]+(?:\.[0-9]+){0,2}\z/
@@ -41,6 +44,10 @@ module BunwayTestFlightGroups
     raise
   rescue StandardError
     raise Invalid, 'The Bunway IPA version/build could not be read. No package contents were printed.'
+  end
+
+  def self.package_path(path, workspace: ENV['GITHUB_WORKSPACE'])
+    File.expand_path(path, workspace.to_s.empty? ? Dir.pwd : workspace)
   end
 
   def self.assign!(identifier:, group_id:, version:, number:, platform:, client: Client.new, sleeper: ->(seconds) { Kernel.sleep(seconds) })

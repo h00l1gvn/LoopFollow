@@ -40,6 +40,12 @@ group/build relationship. It does not create groups, add testers, submit externa
 beta review, or log group names/identifiers or tester details. An uncertain POST
 is resolved by bounded relationship reads rather than repeating the mutation.
 
+Both release lanes resolve the exact IPA against `GITHUB_WORKSPACE` and pass that
+same absolute path to metadata analysis and upload. This also works when Fastfile
+lane code executes from the `fastlane/` directory. The SDK regression uses the
+locked Fastlane 2.237 analyser, including a run from a different working directory;
+an owner-only local IPA can be supplied through `BUNWAY_TEST_IPA` without uploading it.
+
 ## Exact encrypted outputs
 
 | Job | Artifact name | Only uploaded file |
@@ -83,6 +89,7 @@ node --test fastlane/bunway/test_artifact_crypto.cjs
 ruby fastlane/bunway/test_bryan_workflow.rb
 ruby fastlane/bunway/test_store_workflow.rb
 ruby fastlane/bunway/test_testflight_groups.rb
+bundle exec ruby fastlane/bunway/test_package_coordinates.rb
 ```
 
 The Store tests exercise source/key gates, exact encrypted artifact paths,
