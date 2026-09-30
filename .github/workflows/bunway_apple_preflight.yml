@@ -1,0 +1,67 @@
+name: Bunway Apple preflight (read only)
+run-name: Audit existing Bunway Apple identifiers and profiles
+
+on:
+  # A new workflow cannot be dispatched before it exists on the default branch.
+  # This exact isolated branch can run the audit without touching default main
+  # or triggering the separately scoped bunway-release publishing workflow.
+  push:
+    branches: [codex/bunway-apple-preflight]
+    paths:
+      - .github/workflows/bunway_apple_preflight.yml
+      - Scripts/bunway_apple_preflight.py
+      - Scripts/bunway_apple_preflight_requirements.txt
+      - Scripts/test_bunway_apple_preflight.py
+      - BUNWAY_APPLE_PREFLIGHT.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bunway-read-only-apple-preflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    if: github.ref == 'refs/heads/codex/bunway-apple-preflight'
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated audit source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install audit dependencies
+        run: |
+          python -m pip install --only-binary=:all: -r Scripts/bunway_apple_preflight_requirements.txt
+
+      - name: Test read-only boundaries and profile checks
+        run: python -m unittest discover -s Scripts -p 'test_bunway_apple_preflight.py' -v
+
+      - name: Read existing Apple metadata
+        env:
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          python Scripts/bunway_apple_preflight.py \
+            --report "$RUNNER_TEMP/bunway-apple-preflight/report.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve sanitised audit only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: Bunway-Apple-read-only-preflight
+          path: ${{ runner.temp }}/bunway-apple-preflight/report.json
+          if-no-files-found: ignore
+          retention-days: 7
