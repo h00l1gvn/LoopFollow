@@ -1,5 +1,5 @@
 name: Build Bunway
-run-name: Build and deliver Bunway iPhone and Apple TV to TestFlight
+run-name: Build and deliver Bunway 0.3 iPhone and Apple TV to TestFlight
 
 on:
   workflow_dispatch:
