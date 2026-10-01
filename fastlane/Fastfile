@@ -501,7 +501,11 @@ platform :tvos do
       api_key: api_key,
       initial_build_number: 0
     )
-    next_build_number = previous + 1
+    minimum_build = ENV['MOOBYTE_TV_MIN_BUILD_NUMBER'].to_s.strip
+    unless minimum_build.empty? || minimum_build.match?(/\A[1-9][0-9]*\z/)
+      UI.user_error!('MooByte TV minimum build number must be a positive integer')
+    end
+    next_build_number = [previous + 1, minimum_build.to_i].max
     match(
       type: "appstore",
       platform: "tvos",

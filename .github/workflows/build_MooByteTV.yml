@@ -3,6 +3,12 @@ run-name: Build and deliver MooByte to private Apple TV TestFlight
 
 on:
   workflow_dispatch:
+    inputs:
+      minimum_build_number:
+        description: 'Optional minimum TV build number after an Apple upload collision'
+        required: false
+        default: ''
+        type: string
   push:
     branches:
       - main
@@ -36,6 +42,7 @@ jobs:
       - name: Build and sign MooByte TV
         run: bundle exec fastlane tvos build_MooByteTV
         env:
+          MOOBYTE_TV_MIN_BUILD_NUMBER: ${{ inputs.minimum_build_number }}
           TEAMID: ${{ secrets.TEAMID }}
           GH_PAT: ${{ secrets.GH_PAT }}
           FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
