@@ -1,0 +1,13 @@
+{
+  "family": "tvos",
+  "release_id": 405022214,
+  "release_tag": "resale-burrow-0.1.0-build-2-tvos-038c9e2b61b5",
+  "package_name": "ResaleBurrowTV.ipa",
+  "package_asset_id": 616306504,
+  "package_sha256": "4cf330f8a832e24fe23e38b62fdf374eafc4a7b9eb5cb9330e8b00891d27284e",
+  "package_bytes": 11553550,
+  "manifest_name": "manifest.json",
+  "manifest_asset_id": 616306505,
+  "manifest_sha256": "30370d08300616cf6470480077e847aace58db01d64ed679b6d2d5b01c6f56c2",
+  "manifest_bytes": 892
+}

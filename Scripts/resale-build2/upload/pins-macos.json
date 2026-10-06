@@ -1,0 +1,13 @@
+{
+  "family": "macos",
+  "release_id": 405022057,
+  "release_tag": "resale-burrow-0.1.0-build-2-macos-038c9e2b61b5",
+  "package_name": "ResaleBurrowMac.pkg",
+  "package_asset_id": 616306087,
+  "package_sha256": "173a01c3b87c356994a99abcdca3d2cb41e1b37975b4eeac0ff5fd4ff7c0e05b",
+  "package_bytes": 9079753,
+  "manifest_name": "manifest.json",
+  "manifest_asset_id": 616306098,
+  "manifest_sha256": "64dbdb363553d7241f2bba24ef498a7f68f10c938b75a9217ee0738f23a8fd2d",
+  "manifest_bytes": 1443
+}
