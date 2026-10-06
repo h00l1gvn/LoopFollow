@@ -13,7 +13,7 @@ class BunwayStoreWorkflowTests < Minitest::Test
   def step(id); steps.find { |entry| entry['id'] == id }; end
 
   def test_exact_repository_ref_and_nonbypassable_readiness
-    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release'", workflow.fetch('jobs').fetch('build')['if']
+    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && (github.event_name == 'workflow_dispatch' || vars.BUNWAY_CAPABILITIES_READY == 'true')", workflow.fetch('jobs').fetch('build')['if']
     assert_equal ['bunway-release'], workflow.fetch('on').fetch('push').fetch('branches')
     assert_equal({'contents'=>'read'}, workflow['permissions'])
     assert_equal false, workflow.fetch('on').fetch('workflow_dispatch').fetch('inputs').fetch('capabilities_ready').fetch('default')
@@ -21,7 +21,17 @@ class BunwayStoreWorkflowTests < Minitest::Test
   end
 
   def test_matrix_and_lanes_include_only_phone_and_tv
-    matrix=workflow.fetch('jobs').fetch('build').fetch('strategy').fetch('matrix').fetch('include')
+    expression=workflow.fetch('jobs').fetch('build').fetch('strategy').fetch('matrix')
+    matrices=expression.scan(/'(\{[^']+\})'/).flatten.map { |value| JSON.parse(value).fetch('include') }
+    assert_equal 3, matrices.length
+    matrix=matrices.last
+    assert_equal [matrix.first], matrices[0]
+    assert_equal [matrix.last], matrices[1]
+    selection=workflow.fetch('on').fetch('workflow_dispatch').fetch('inputs').fetch('platform')
+    assert_equal 'all', selection['default']
+    assert_equal ['all','ios','tvos'],selection['options']
+    assert_includes expression, "inputs.platform == 'ios'"
+    assert_includes expression, "inputs.platform == 'tvos'"
     assert_equal [
       {'platform'=>'ios','lane'=>'BunwayPhone','ipa'=>'BunwayPhone.ipa','buildlog'=>'buildlog-bunway-phone','group_secret'=>'BUNWAY_PHONE_TESTFLIGHT_GROUP_ID'},
       {'platform'=>'tvos','lane'=>'BunwayTV','ipa'=>'BunwayTV.ipa','buildlog'=>'buildlog-bunway-tv','group_secret'=>'BUNWAY_TV_TESTFLIGHT_GROUP_ID'}

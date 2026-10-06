@@ -650,6 +650,36 @@ platform :tvos do
     )
   end
 
+  desc "Check existing Bunway TV CloudKit and refreshed Store profile without building or uploading"
+  lane :check_BunwayTVReadiness do
+    setup_ci if ENV["CI"]
+    app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
+    require_relative "bunway/tv_readiness"
+    begin
+      proof = BunwayTVReadiness.run(
+        bundle_ids: Spaceship::ConnectAPI::BundleId, team: TEAMID,
+        allow_enable: ENV["BUNWAY_TV_ENABLE_CLOUDKIT"] == "true",
+        refresh_profile: lambda {
+          identifier = BunwayTVReadiness::IDENTIFIER
+          match(type: "appstore", platform: "tvos", readonly: false, force: true,
+                team_id: TEAMID,
+                git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+                app_identifier: [identifier])
+          mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING] || {}
+          raise BunwayTVReadiness::Invalid, "Missing refreshed Bunway TV distribution profile" unless mapping[identifier]
+          BunwayProfileCheck.decode(BunwayProfileCheck.find_path(identifier, "appstore", mapping[identifier]))
+        }
+      )
+      if ENV["BUNWAY_TV_READINESS_PROOF"]
+        require "json"
+        File.write(ENV.fetch("BUNWAY_TV_READINESS_PROOF"), JSON.generate(proof))
+      end
+      UI.success("Verified existing Bunway TV CloudKit and refreshed Production Store profile. No archive or upload was performed.")
+    rescue BunwayTVReadiness::Invalid => error
+      UI.user_error!(error.message)
+    end
+  end
+
   desc "Build and sign Bunway for Apple TV"
   lane :build_BunwayTV do
     setup_ci if ENV['CI']
@@ -658,19 +688,33 @@ platform :tvos do
     project_path = File.join(GITHUB_WORKSPACE, "BunwaySource", "apple", "Bunway.xcodeproj")
     generator = File.read(File.join(GITHUB_WORKSPACE, "BunwaySource", "apple", "generate_project.py"))
     source_build = Integer(generator[/"CURRENT_PROJECT_VERSION":\s*"(\d+)"/, 1] || "5")
+    source_version = generator[/"MARKETING_VERSION":\s*"([^"]+)"/, 1]
+    UI.user_error!("The reviewed Bunway marketing version could not be read.") unless source_version.to_s.match?(/\A\d+\.\d+\.\d+\z/)
     api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
     previous = latest_testflight_build_number(app_identifier: identifier, platform: "appletvos", api_key: api_key, initial_build_number: 0)
+    selected_build = [previous + 1, source_build].max
     match(type: "appstore", platform: "tvos", readonly: false,
           git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
-          app_identifier: [identifier])
-    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+          app_identifier: [identifier], force: true)
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING] || {}
+    UI.user_error!("Missing Bunway TV distribution profile") unless mapping[identifier]
+    begin
+      profile = BunwayProfileCheck.decode(BunwayProfileCheck.find_path(identifier, "appstore", mapping[identifier]))
+      BunwayProfileCheck.validate(profile, identifier, TEAMID, cloud: true, environment: "Production")
+    rescue StandardError => error
+      UI.user_error!(error.message)
+    end
+    UI.success("Verified Bunway TV distribution capabilities and Production environment")
     update_project_team(path: project_path, teamid: TEAMID)
     update_code_signing_settings(path: project_path, profile_name: mapping[identifier],
                                  code_sign_identity: "Apple Distribution", targets: ["BunwayTV"])
     gym(project: project_path, scheme: "BunwayTV", export_method: "app-store",
         output_name: "BunwayTV.ipa", configuration: "Release", destination: "generic/platform=tvOS",
-        xcargs: "CURRENT_PROJECT_VERSION=#{[previous + 1, source_build].max}", buildlog_path: "buildlog-bunway-tv",
-        export_options: {provisioningProfiles: {identifier => mapping[identifier]}})
+        xcargs: "CURRENT_PROJECT_VERSION=#{selected_build}", buildlog_path: "buildlog-bunway-tv",
+        export_options: {iCloudContainerEnvironment: "Production", provisioningProfiles: {identifier => mapping[identifier]}})
+    require_relative "bunway/verify_tv_exported_ipa"
+    BunwayTVExportCheck.verify(File.join(GITHUB_WORKSPACE, "BunwayTV.ipa"), TEAMID, source_version, selected_build.to_s)
+    UI.success("Verified the exact signed Bunway TV package and Production CloudKit before encryption or upload")
   end
 
   desc "Upload Bunway Apple TV to TestFlight"

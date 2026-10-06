@@ -1,0 +1,123 @@
+name: Check Bunway TV readiness
+run-name: Verify existing Bunway TV CloudKit and refreshed Production Store profile
+
+'on':
+  workflow_dispatch:
+    inputs:
+      enable_cloudkit:
+        description: Enable CloudKit on the existing Bunway TV identifier if needed; no container association
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+# Share the Store signing lock; this probe also refreshes the TV match profile.
+concurrency:
+  group: bunway-store-delivery
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release'
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Checkout reviewed delivery tools without persisting credentials
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
+
+      - name: Select Xcode 26.2
+        run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+
+      - name: Install pinned delivery dependencies
+        run: bundle install
+
+      - name: Select Node 24 for encrypted diagnostics
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Check helper and workflow boundaries without Apple calls
+        run: |
+          ruby fastlane/bunway/test_tv_readiness.rb
+          ruby fastlane/bunway/test_tv_readiness_workflow.rb
+
+      - name: Check diagnostic encryption is configured
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os,re,sys
+          if not re.fullmatch(r'[0-9a-fA-F]{64}',os.environ.get('BUNWAY_ARTIFACT_KEY','')):
+              sys.exit('The private diagnostic encryption key is not configured.')
+          PY
+
+      - name: Read TV CloudKit and verify a freshly refreshed Store profile
+        id: probe
+        env:
+          BUNWAY_TV_ENABLE_CLOUDKIT: ${{ inputs.enable_cloudkit && 'true' || 'false' }}
+          BUNWAY_TV_READINESS_PROOF: ${{ runner.temp }}/bunway-tv-readiness-proof.json
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: |
+          umask 077
+          if ! bundle exec fastlane tvos check_BunwayTVReadiness > "$RUNNER_TEMP/bunway-tv-readiness.log" 2>&1; then
+            echo "TV readiness failed at capability readback, profile refresh or Production container permission. No archive or upload occurred; encrypted diagnostics will be preserved when possible."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json,os,sys
+          from pathlib import Path
+          expected={'cloudkit_capability_verified','profile_refreshed','production_profile_verified','exact_container_permission_verified'}
+          proof=json.loads(Path(os.environ['BUNWAY_TV_READINESS_PROOF']).read_text())
+          if any(proof.get(key) is not True for key in expected) or proof.get('container_association_changed') is not False or proof.get('archive_or_upload_performed') is not False:
+              sys.exit('The TV readiness proof was incomplete.')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as output:
+              output.write('Verified existing Bunway TV CloudKit capability and a freshly refreshed Store profile granting the exact Bunway container in Production. No container association, archive, upload or device installation was performed.\n')
+              output.write('CloudKit capability changed: '+('yes' if proof.get('capability_changed') is True else 'no')+'.\n')
+          PY
+          echo "TV capability readback and refreshed Production profile verified. App build and device acceptance remain separate."
+
+      - name: Encrypt failed readiness diagnostics
+        id: encrypt_diagnostics
+        if: failure() && steps.probe.outcome == 'failure'
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import os,sys,tarfile
+          from pathlib import Path
+          try:
+              temporary=Path(os.environ['RUNNER_TEMP'])
+              log=temporary/'bunway-tv-readiness.log'
+              if not log.is_file() or log.is_symlink():
+                  sys.exit('No private readiness diagnostic log was available.')
+              with tarfile.open(temporary/'bunway-tv-readiness-diagnostics.tar.gz','w:gz') as archive:
+                  archive.add(log,arcname='readiness.log',recursive=False)
+          except Exception:
+              sys.exit('Readiness diagnostics could not be prepared; private details were not printed.')
+          PY
+          node fastlane/bunway/artifact_crypto.cjs encrypt "$RUNNER_TEMP/bunway-tv-readiness-diagnostics.tar.gz" BunwayTV-readiness.diagnostics.tar.gz.enc
+          echo "preserved=true" >> "$GITHUB_OUTPUT"
+
+      - name: Preserve only encrypted failed readiness diagnostics
+        if: failure() && steps.encrypt_diagnostics.outputs.preserved == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: Bunway-TV-readiness-encrypted-${{ github.run_id }}
+          path: BunwayTV-readiness.diagnostics.tar.gz.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove raw readiness diagnostics
+        if: always()
+        run: rm -f "$RUNNER_TEMP/bunway-tv-readiness.log" "$RUNNER_TEMP/bunway-tv-readiness-proof.json" "$RUNNER_TEMP/bunway-tv-readiness-diagnostics.tar.gz" BunwayTV-readiness.diagnostics.tar.gz.enc

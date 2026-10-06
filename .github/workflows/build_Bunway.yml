@@ -1,5 +1,5 @@
 name: Build Bunway
-run-name: Build and deliver Bunway 0.4 iPhone, iPad, Watch, widgets and Apple TV
+run-name: Build and deliver the selected Bunway release platforms
 
 'on':
   workflow_dispatch:
@@ -13,6 +13,12 @@ run-name: Build and deliver Bunway 0.4 iPhone, iPad, Watch, widgets and Apple TV
         description: Full reviewed Bunway source commit already merged into main
         type: string
         required: true
+      platform:
+        description: Deliver only the selected platform to avoid rebuilding processed releases
+        type: choice
+        required: true
+        default: all
+        options: [all, ios, tvos]
   push:
     branches: [bunway-release]
     paths:
@@ -31,23 +37,13 @@ concurrency:
 
 jobs:
   build:
-    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release'
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && (github.event_name == 'workflow_dispatch' || vars.BUNWAY_CAPABILITIES_READY == 'true')
     runs-on: macos-26
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: ios
-            lane: BunwayPhone
-            ipa: BunwayPhone.ipa
-            buildlog: buildlog-bunway-phone
-            group_secret: BUNWAY_PHONE_TESTFLIGHT_GROUP_ID
-          - platform: tvos
-            lane: BunwayTV
-            ipa: BunwayTV.ipa
-            buildlog: buildlog-bunway-tv
-            group_secret: BUNWAY_TV_TESTFLIGHT_GROUP_ID
+      matrix: >-
+        ${{ fromJSON(inputs.platform == 'ios' && '{"include":[{"platform":"ios","lane":"BunwayPhone","ipa":"BunwayPhone.ipa","buildlog":"buildlog-bunway-phone","group_secret":"BUNWAY_PHONE_TESTFLIGHT_GROUP_ID"}]}' || inputs.platform == 'tvos' && '{"include":[{"platform":"tvos","lane":"BunwayTV","ipa":"BunwayTV.ipa","buildlog":"buildlog-bunway-tv","group_secret":"BUNWAY_TV_TESTFLIGHT_GROUP_ID"}]}' || '{"include":[{"platform":"ios","lane":"BunwayPhone","ipa":"BunwayPhone.ipa","buildlog":"buildlog-bunway-phone","group_secret":"BUNWAY_PHONE_TESTFLIGHT_GROUP_ID"},{"platform":"tvos","lane":"BunwayTV","ipa":"BunwayTV.ipa","buildlog":"buildlog-bunway-tv","group_secret":"BUNWAY_TV_TESTFLIGHT_GROUP_ID"}]}') }}
     steps:
       - name: Confirm Bunway release prerequisites without printing credentials
         id: selected
