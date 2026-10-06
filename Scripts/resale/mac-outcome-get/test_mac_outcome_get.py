@@ -1,4 +1,4 @@
-import copy, unittest, tempfile
+import copy, unittest, tempfile, subprocess
 from pathlib import Path
 from unittest.mock import patch
 import mac_outcome_get as probe
@@ -90,4 +90,24 @@ class Tests(unittest.TestCase):
             self.assertNotIn(forbidden,text)
         self.assertIn('Protect exact private GET snapshot and diagnostics',text)
         self.assertIn('persist-credentials: false',text)
+    def test_entire_workflow_parses_as_YAML(self):
+        root=Path(probe.__file__).resolve().parent
+        candidates=[root/'resale-mac-outcome-get.yml',root.parents[2]/'.github/workflows/resale-mac-outcome-get.yml']
+        path=next(p for p in candidates if p.is_file())
+        result=subprocess.run(['ruby','-rpsych','-e','Psych.parse_file(ARGV[0])',str(path)],
+                              stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.assertEqual(result.returncode,0,'Entire workflow must parse; shell colons require a block scalar.')
+    def test_all_run_steps_are_nonempty_strings(self):
+        root=Path(probe.__file__).resolve().parent
+        path=next(p for p in [root/'resale-mac-outcome-get.yml',root.parents[2]/'.github/workflows/resale-mac-outcome-get.yml'] if p.is_file())
+        ruby="doc=Psych.safe_load(File.read(ARGV[0])); raise unless doc['jobs'].keys == ['outcome']; steps=doc['jobs']['outcome']['steps']; raise unless steps.is_a?(Array); runs=steps.select{|s| s.key?('run')}; raise unless runs.length == 6 && runs.all?{|s| s['run'].is_a?(String) && !s['run'].strip.empty?}; raise unless runs.find{|s| s['name'] == 'Install pinned read-only authentication dependencies'}['run'].include?('--only-binary=:all:')"
+        result=subprocess.run(['ruby','-rpsych','-e',ruby,str(path)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.assertEqual(result.returncode,0,'Every native run step must parse into the intended shell string.')
+        # The previously rejected scalar must actually fail, so this guard
+        # proves it covers the registration failure rather than mirroring text.
+        old=path.read_text().replace('run: |\n          python -m pip install','run: python -m pip install',1)
+        with tempfile.TemporaryDirectory() as folder:
+            broken=Path(folder)/'broken.yml';broken.write_text(old)
+            result=subprocess.run(['ruby','-rpsych','-e','Psych.parse_file(ARGV[0])',str(broken)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.assertNotEqual(result.returncode,0)
 if __name__=='__main__':unittest.main()

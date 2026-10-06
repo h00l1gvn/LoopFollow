@@ -25,7 +25,8 @@ jobs:
       - name: Verify exact reviewed helper bytes before credentials
         run: python Scripts/resale/mac-outcome-get/mac_outcome_get.py --verify-source-only
       - name: Install pinned read-only authentication dependencies
-        run: python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale/mac-outcome-get/upload-requirements.txt
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale/mac-outcome-get/upload-requirements.txt
       - name: Offline exact Mac GET and privacy guards
         run: python -m unittest discover -s Scripts/resale/mac-outcome-get -p test_mac_outcome_get.py -v
       - name: GET exact Mac app builds and buildUploads once
