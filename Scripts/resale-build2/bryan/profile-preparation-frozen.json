@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "prepared_offline_only",
-  "recorded_at": "2026-10-06T18:27:55.894041+00:00",
+  "recorded_at": "2026-10-06T18:35:50.969730+00:00",
   "source_sha": "038c9e2b61b5b6c28355c478c883edee8372e330",
   "version": "0.1.0",
   "build": "2",
@@ -44,11 +44,11 @@
     },
     {
       "path": "bryan/prepare_bryan_push_profiles.py",
-      "sha256": "42a399726725b89f64beb4d3e5869a49dd9b42a66a5e89adceeb49500a2b885c"
+      "sha256": "b03a2b35836b3b562c42d3aad730fcbc16e032bf3842ffe53b71718a1233fb64"
     },
     {
       "path": "bryan/test_prepare_bryan_push_profiles.py",
-      "sha256": "9317d85a0e4b65b28788a7df811cc3c4724ac8db2639a25bd848e310e4e1ed61"
+      "sha256": "d19d51d556ea72074527d16d629f1ad53a10e0830534b4a330768c28c2d3157a"
     },
     {
       "path": "bryan/bryan-profile-preparation-scope.json",
@@ -64,10 +64,10 @@
     }
   ],
   "tests": {
-    "profile_guards": 38,
+    "profile_guards": 45,
     "envelope_guards": 4,
     "preparation_layout_pass": true,
-    "ci_layout_pass": true,
+    "ci_layout_pass": "unchanged_layout_prior_pass; narrow_guard_delta_tested_locally",
     "actual_sibling_export_scope_check_accepts_synthetic_emitted_scope": true,
     "synthetic_only": true
   },
@@ -85,5 +85,30 @@
     "spacing_seconds": 15,
     "post_retries": 0,
     "actual_post_id_preserved_privately": true
+  },
+  "supersedes_settling_receipt_sha256": "1b64341e9de0d89c84098f2b11185205f77e163342c077d3bae42a1473a2d312",
+  "changed_files": [
+    "bryan/prepare_bryan_push_profiles.py",
+    "bryan/test_prepare_bryan_push_profiles.py"
+  ],
+  "historical_state_boundary": {
+    "provenance_only_ids": [
+      "DMWQ2F9XCQ",
+      "234A433R79"
+    ],
+    "permitted_states": [
+      "ACTIVE",
+      "INVALID"
+    ],
+    "old_exact_cms_name_uuid_team_group_certificate_signature_single_phone_unchanged": true,
+    "widgets_and_all_new_profiles_active_required": true,
+    "actual_metadata_recorded_privately": true,
+    "actual_failed_run_observation_relayed_by_workflow_agent": {
+      "run_id": 37511913437,
+      "stop_code": "profile_resource_identity_invalid",
+      "profile_posts": 0,
+      "intent_files": 0
+    },
+    "cause_not_inferred": true
   }
 }

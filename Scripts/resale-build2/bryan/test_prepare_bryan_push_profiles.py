@@ -130,6 +130,30 @@ class Guards(unittest.TestCase):
         f=FakeClient();next(iter(f.decoded.values()))['Entitlements']['get-task-allow']=True;self.failure(f,'group_release');self.assertEqual(f.posts,[])
     def test_wrong_profile_type(self):
         f=FakeClient();next(iter(f.resources.values()))['attributes']['profileType']='IOS_APP_STORE';self.failure(f,'resource_identity');self.assertEqual(f.posts,[])
+    def test_invalid_old_receivers_are_provenance_only_not_exported(self):
+        f=FakeClient()
+        for ident in p.NEW:f.resources[f.old[ident][0]]['attributes']['profileState']='INVALID'
+        r,e,f=self.execute(f);self.assertTrue(r['complete']);self.assertEqual(len(f.posts),2)
+        self.assertTrue(all(x['native_profile_state']=='ACTIVE' for x in r['profiles']))
+        self.assertFalse({f.old[k][0] for k in p.NEW}&{x['native_profile_id'] for x in e['adhoc_native_profiles']})
+    def test_invalid_old_widget_rejected_before_post(self):
+        f=FakeClient();f.resources[f.old[p.c.BASE+'.widgets'][0]]['attributes']['profileState']='INVALID';self.failure(f,'state_not_authorized');self.assertEqual(f.posts,[])
+    def test_invalid_new_profile_rejected(self):
+        f=FakeClient();f.valid_existing();next(iter(f.named.values()))[0]['attributes']['profileState']='INVALID';self.failure(f,'state_not_authorized');self.assertEqual(f.posts,[])
+    def test_invalid_created_profile_stops_without_second_post(self):
+        f=FakeClient();original=f.create_profile
+        def invalid(row):
+            result=original(row);next(iter(f.named.values()))[0]['attributes']['profileState']='INVALID';return result
+        f.create_profile=invalid;self.failure(f,'state_not_authorized');self.assertEqual(len(f.posts),1)
+    def test_invalid_old_receiver_still_requires_exact_cms_pin(self):
+        f=FakeClient();resource=f.resources[f.old[p.c.BASE][0]];resource['attributes'].update(profileState='INVALID',profileContent=base64.b64encode(b'changed').decode());self.failure(f,'content_pin_changed');self.assertEqual(f.posts,[])
+    def test_unknown_old_state_rejected(self):
+        f=FakeClient();f.resources[f.old[p.c.BASE][0]]['attributes']['profileState']='EXPIRED';self.failure(f,'state_not_authorized');self.assertEqual(f.posts,[])
+    def test_old_metadata_recorded_privately_without_hardware(self):
+        f=FakeClient();f.resources[f.old[p.c.BASE][0]]['attributes']['profileState']='INVALID';s=scope();s['old_profiles']=[dict(bundle_id=k,native_profile_id=v[0],name=v[1],sha256=v[2],uuid=v[3],owner_private_phone_membership_verified_by_exact_cms_hash=True) for k,v in f.old.items()]
+        with tempfile.TemporaryDirectory() as t,patch.object(p,'OLD',f.old),patch.object(p.time,'sleep'):
+            out=pathlib.Path(t)/'out';p.prepare(f,s,out,NOW,f.decoder,lambda *_:CERT);file=out/(f.old[p.c.BASE][0]+'-old-observation-private.json');r=json.loads(file.read_text())
+            self.assertEqual(r['observed_state'],'INVALID');self.assertTrue(r['cms_matches_reviewed_pin']);self.assertEqual(file.stat().st_mode&0o777,0o600);self.assertNotIn(PHONE,file.read_text());self.assertNotIn(DEVICE,file.read_text())
     def test_scope_source_stale(self):
         with self.assertRaisesRegex(p.c.GateError,'source_required'):self.execute(mutate=lambda s:s.update(source_sha=p.c.OLD_SOURCE))
     def test_scope_private_membership_unverified(self):

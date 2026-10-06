@@ -74,11 +74,16 @@ def utc(v):
 
 def profile(resource,ident,name,cert,now,decoder,*,old=False,device=None):
     a=resource.get('attributes',{});native=resource.get('id','')
-    c.require(resource.get('type')=='profiles' and re.fullmatch('[A-Za-z0-9_-]{1,80}',native) and a.get('name')==name and a.get('profileType')=='IOS_APP_ADHOC' and a.get('profileState')=='ACTIVE','profile_resource_identity_invalid')
+    c.require(resource.get('type')=='profiles' and re.fullmatch('[A-Za-z0-9_-]{1,80}',native) and a.get('name')==name and a.get('profileType')=='IOS_APP_ADHOC','profile_resource_identity_invalid')
     try:raw=base64.b64decode(a.get('profileContent',''),validate=True)
     except (ValueError,TypeError):raise c.GateError('profile_content_invalid') from None
     c.require(0<len(raw)<=2*1024**2,'profile_content_bound')
     if old:c.require(native==OLD[ident][0] and hashlib.sha256(raw).hexdigest()==OLD[ident][2],'old_profile_content_pin_changed')
+    # Only the two exact hash-pinned historical receivers are provenance.
+    # They are never restored/exported for build2. Widgets and new profiles
+    # remain signing material and must be ACTIVE without exception.
+    provenance_only=old and ident in NEW
+    c.require(a.get('profileState') in ({'ACTIVE','INVALID'} if provenance_only else {'ACTIVE'}),'profile_resource_state_not_authorized')
     p=decoder(raw);e=p.get('Entitlements',{});c.require(isinstance(e,dict),'profile_entitlements_invalid')
     c.require(p.get('Name')==name and p.get('TeamIdentifier')==[c.TEAM] and p.get('ApplicationIdentifierPrefix')==[c.TEAM] and e.get('application-identifier')==c.TEAM+'.'+ident and e.get('com.apple.developer.team-identifier')==c.TEAM,'profile_signed_identity_changed')
     c.require('com.apple.application-identifier' not in e and e.get('com.apple.security.application-groups')==[c.GROUP] and e.get('get-task-allow') is False and p.get('ProvisionsAllDevices',False) is False and p.get('DeveloperCertificates')==[cert],'profile_group_release_or_certificate_changed')
@@ -92,7 +97,7 @@ def profile(resource,ident,name,cert,now,decoder,*,old=False,device=None):
     devices=p.get('ProvisionedDevices');c.require(isinstance(devices,list) and len(devices)==1 and isinstance(devices[0],str) and bool(devices[0].strip()),'exact_single_private_phone_required')
     hardware=devices[0].strip().upper()
     if device is not None:c.require(hardware==device,'private_phone_membership_changed')
-    result={'bundle_id':ident,'native_profile_id':native,'name':name,'uuid':uuid,'sha256':hashlib.sha256(raw).hexdigest(),'profile_type':'IOS_APP_ADHOC','native_readback_verified':True,'owner_private_phone_membership_verified_by_exact_cms_hash':True,'certificate_sha256':c.CERT_SHA,'production_aps_verified':not old and ident in NEW,'expires_at':expires.isoformat(),'watch_hardware_eligibility_verified':False}
+    result={'bundle_id':ident,'native_profile_id':native,'name':name,'uuid':uuid,'sha256':hashlib.sha256(raw).hexdigest(),'profile_type':'IOS_APP_ADHOC','native_profile_state':a['profileState'],'historical_provenance_only':provenance_only,'native_readback_verified':True,'owner_private_phone_membership_verified_by_exact_cms_hash':True,'certificate_sha256':c.CERT_SHA,'production_aps_verified':not old and ident in NEW,'expires_at':expires.isoformat(),'watch_hardware_eligibility_verified':False}
     return result,raw,hardware
 
 def request(row,device_id):
@@ -153,7 +158,13 @@ def prepare(client,s,output,now=None,decoder=decode_cms,certificate=ap.certifica
     # ALL four exact old CMS profiles and BOTH private API device relationships
     # are validated before the first POST. Public receipts contain neither value.
     for ident,(native,name,_,_) in OLD.items():
-        result,raw,phone=profile(client.get('/v1/profiles/'+native).get('data',{}),ident,name,cert,now,decoder,old=True,device=private_phone)
+        resource=client.get('/v1/profiles/'+native).get('data',{});attrs=resource.get('attributes',{})
+        try:
+            observed_raw=base64.b64decode(attrs.get('profileContent',''),validate=True)
+            observed_digest=hashlib.sha256(observed_raw).hexdigest() if 0<len(observed_raw)<=2*1024**2 else None
+        except (ValueError,TypeError):observed_digest=None
+        write(out/(native+'-old-observation-private.json'),{'native_profile_id':native,'bundle_id':ident,'observed_state':attrs.get('profileState') if attrs.get('profileState') in {'ACTIVE','INVALID'} else 'unexpected_or_missing','resource_id_matches_pin':resource.get('id')==native,'resource_type_matches':resource.get('type')=='profiles','exact_name_matches':attrs.get('name')==name,'profile_type_matches':attrs.get('profileType')=='IOS_APP_ADHOC','observed_cms_sha256':observed_digest,'cms_matches_reviewed_pin':observed_digest==OLD[ident][2],'historical_receiver_provenance_only':ident in NEW,'hardware_values_retained':False})
+        result,raw,phone=profile(resource,ident,name,cert,now,decoder,old=True,device=private_phone)
         private_phone=phone;old[ident]=(result,raw);write(out/(native+'.mobileprovision'),raw,True)
     devices=[]
     for ident in NEW:
