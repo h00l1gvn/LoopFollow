@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "source_sha": "526c52eb2dd0fb2591a2f7b65aaca26d3a3a39a6",
+  "version": "0.1.0",
+  "build": "3",
+  "existing_profiles_only": true,
+  "files": [
+    {
+      "path": "artifact_crypto.cjs",
+      "sha256": "a1643a0828e04805f7aa6cde7acf0239a3fc9619cc971815d472d315d0177b3a"
+    },
+    {
+      "path": "audit-requirements.txt",
+      "sha256": "8cf710466bed3f56185c7ba0b4627049765cb5df2a9855b4abb987b52594ab15"
+    },
+    {
+      "path": "build3_contract.py",
+      "sha256": "c91a20ba1b8357907eacfdff01009903eb082a4374dacdf1f36ba81b82a7ef68"
+    },
+    {
+      "path": "build3_profile_audit.py",
+      "sha256": "4f2c76a68caa81dee89316d1be7d834758f96477d2824c79814e387aebcec19e"
+    },
+    {
+      "path": "configure_build3_signing.rb",
+      "sha256": "23f7b22972699d7790247ff1e9349deac4d4256cc80ad1016488976892419258"
+    },
+    {
+      "path": "export_bryan_build3.py",
+      "sha256": "70f0ae7de4fb29fedc689a2c1b1acee53c43466815c3cd5b6d18be5ed410a922"
+    },
+    {
+      "path": "export_build3_family.py",
+      "sha256": "7df64816df10d0eb051c1db995cab60fb76a7d30a51468e9a73d3ced3529f4f4"
+    },
+    {
+      "path": "mac_payload_permissions.py",
+      "sha256": "8cfcd540a45e95d685ccca6874c38c84b983ba85f31f0109a08d5f9f43b552e6"
+    },
+    {
+      "path": "protect_resale_artifact.cjs",
+      "sha256": "170ab027dbb2155fa859a4bc4e841d2f198346a0a334fdfc34cb2214bb128e6e"
+    },
+    {
+      "path": "resale-recipient-public.pem",
+      "sha256": "344f102576716781a265470b48f8e5d2644ecfc12a60edb19f4170d65d3cbe1e"
+    },
+    {
+      "path": "resale_apple_audit.py",
+      "sha256": "1ec975e20d66b08de3a48b9acba7dc59523fc13c9eb9b0ef27965f6c6992bc05"
+    },
+    {
+      "path": "restore_build3_material.py",
+      "sha256": "75f7241387a055023edf1394d235d5225134ffd11a6365259c8e1eb13da3fa43"
+    },
+    {
+      "path": "scope.json",
+      "sha256": "82cafcb132b8be0bbf4bde07802d3580ccce6e0cc95f453f77f6ef1d15730b5b"
+    },
+    {
+      "path": "signing-export-scope.json",
+      "sha256": "82cafcb132b8be0bbf4bde07802d3580ccce6e0cc95f453f77f6ef1d15730b5b"
+    },
+    {
+      "path": "source-files.json",
+      "sha256": "69080dbf01b00b56429aef243c06b7e1c8434c4724f2ac2fc2889d27e24f16cb"
+    },
+    {
+      "path": "source-release-review.json",
+      "sha256": "3adcde6bc91fd6f596d7b0d2cd7d11ad2fd3b278d584ea4ff061362f70216fd0"
+    },
+    {
+      "path": "test_export_bryan_build3.py",
+      "sha256": "9ea7a70f018c0fce6c36f78cb1fe3aca0aa5053d1e1df517950c305be76ae9d5"
+    },
+    {
+      "path": "test_protect_resale_artifact.cjs",
+      "sha256": "fc6863360dff4517dd90dc029c3097abbbb1eb4c02f7b9cee9c9888be99c22af"
+    },
+    {
+      "path": "validate_resale_export.py",
+      "sha256": "acedbfa79fdca7950c093d700a12da777eea8118ba1b23206af5859a22dcd9ac"
+    }
+  ]
+}
