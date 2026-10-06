@@ -162,63 +162,145 @@ def decrypt_match_candidates(encoded: bytes, password: str):
             except Exception: continue
     else: raise AuditError('Existing encrypted certificate format was not recognized.')
 
-def certificate_key_check(raw: bytes, team: str):
-    from cryptography.hazmat.primitives.serialization import pkcs12, Encoding, PublicFormat
+def certificate_key_check(raw: bytes, team: str, certificate_raw: bytes | None = None, diagnostics: dict | None = None):
+    """Accept real PKCS12 or Fastlane's PEM .p12 with its exact paired .cer.
+
+    Diagnostics contain fixed counters only, never parser exceptions, subjects or keys.
+    Fastlane 2.237 cert/runner.rb writes a PEM private key under the .p12 name.
+    """
+    from cryptography import x509
+    from cryptography.hazmat.primitives.serialization import pkcs12, Encoding, PublicFormat, load_pem_private_key
     from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
     from cryptography.hazmat.primitives import hashes
     from cryptography.x509.oid import NameOID
-    key, cert, _ = pkcs12.load_key_and_certificates(raw, b'')
-    if key is None or cert is None: return False
+    def count(stage):
+        if diagnostics is not None:
+            values = diagnostics.setdefault('stage_counts', {})
+            values[stage] = values.get(stage, 0) + 1
+    def fail(reason):
+        if diagnostics is not None:
+            values = diagnostics.setdefault('failure_counts', {})
+            values[reason] = values.get(reason, 0) + 1
+        return False
+    key = cert = None
+    key_format = 'pkcs12'
+    try: key, cert, _ = pkcs12.load_key_and_certificates(raw, b'')
+    except (ValueError, TypeError): pass
+    if key is None:
+        key_format = 'pem_with_paired_certificate'
+        try: key = load_pem_private_key(raw, password=None)
+        except (ValueError, TypeError): return fail('private_key_parse_failed')
+        count('private_key_parsed')
+        if certificate_raw is None: return fail('paired_certificate_missing')
+        try:
+            cert = x509.load_der_x509_certificate(certificate_raw)
+        except ValueError:
+            try: cert = x509.load_pem_x509_certificate(certificate_raw)
+            except ValueError: return fail('paired_certificate_parse_failed')
+    else: count('private_key_parsed')
+    if cert is None: return fail('embedded_certificate_missing')
+    count('certificate_parsed')
     teams = [x.value for x in cert.subject.get_attributes_for_oid(NameOID.ORGANIZATIONAL_UNIT_NAME)]
     expiry = cert.not_valid_after_utc
     valid_from = cert.not_valid_before_utc
     now = datetime.now(timezone.utc)
-    if teams != [team] or not valid_from <= now < expiry: return False
-    if cert.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo) != key.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo): return False
+    if teams != [team]: return fail('certificate_team_mismatch')
+    count('certificate_team_verified')
+    if not valid_from <= now < expiry: return fail('certificate_outside_validity')
+    count('certificate_dates_verified')
+    if cert.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo) != key.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo): return fail('private_key_certificate_mismatch')
+    count('private_key_certificate_match')
     message = b'ResaleBurrow signing preflight fixed local challenge; no Apple operation'
-    if isinstance(key, rsa.RSAPrivateKey):
-        signature = key.sign(message, padding.PKCS1v15(), hashes.SHA256()); cert.public_key().verify(signature, message, padding.PKCS1v15(), hashes.SHA256())
-    elif isinstance(key, ec.EllipticCurvePrivateKey):
-        signature = key.sign(message, ec.ECDSA(hashes.SHA256())); cert.public_key().verify(signature, message, ec.ECDSA(hashes.SHA256()))
-    else: return False
-    return {'fingerprint':cert.fingerprint(hashes.SHA256()).hex(), 'expires_at':expiry.isoformat()}
+    try:
+        if isinstance(key, rsa.RSAPrivateKey):
+            signature = key.sign(message, padding.PKCS1v15(), hashes.SHA256()); cert.public_key().verify(signature, message, padding.PKCS1v15(), hashes.SHA256())
+        elif isinstance(key, ec.EllipticCurvePrivateKey):
+            signature = key.sign(message, ec.ECDSA(hashes.SHA256())); cert.public_key().verify(signature, message, ec.ECDSA(hashes.SHA256()))
+        else: return fail('private_key_type_unsupported')
+    except Exception: return fail('private_key_challenge_failed')
+    count('private_key_challenge_verified')
+    return {'fingerprint':cert.fingerprint(hashes.SHA256()).hex(), 'expires_at':expiry.isoformat(), 'key_format':key_format}
 
 def eligible_certificate_classes(native_type):
     return {'DISTRIBUTION':('distribution','mac_app_distribution'), 'IOS_DISTRIBUTION':('distribution',), 'MAC_APP_DISTRIBUTION':('mac_app_distribution',), 'MAC_INSTALLER_DISTRIBUTION':('mac_installer_distribution',)}.get(native_type,())
 
 def audit_existing_certificate_keys(client, entries, apple=None):
-    """Only shared distribution/installer p12 blobs; never profiles/devices/keychain writes."""
+    """Only shared distribution/installer key + exact sibling cert blobs, memory only."""
     password = os.environ.get('MATCH_PASSWORD')
-    result = {'mode':'get_only_memory_decryption', 'distribution':False, 'mac_app_distribution':False, 'mac_installer_distribution':False, 'selected':{}, 'keychain_modified':False, 'new_certificate_created':False}
+    result = {'mode':'get_only_memory_decryption', 'distribution':False, 'mac_app_distribution':False, 'mac_installer_distribution':False, 'selected':{}, 'stage_counts':{}, 'failure_counts':{}, 'keychain_modified':False, 'new_certificate_created':False}
+    def count(stage, failure=False):
+        values = result['failure_counts' if failure else 'stage_counts']
+        values[stage] = values.get(stage, 0) + 1
     if not password: return dict(result, limitation='MATCH_PASSWORD is not configured; private-key usability unverified.')
     relevant = [e for e in entries if re.fullmatch(r'certs/(distribution|mac_app_distribution|mac_installer_distribution)/[A-Za-z0-9_-]+[.]p12',e.get('path','')) and re.fullmatch(r'[0-9a-f]{40}',e.get('sha',''))]
     if len(relevant) > 20: return dict(result, limitation='Existing certificate list exceeded the bounded audit limit.')
-    for e in relevant:
+    paths = {}
+    for entry in entries:
+        path = entry.get('path', '')
+        if re.fullmatch(r'certs/(distribution|mac_app_distribution|mac_installer_distribution)/[A-Za-z0-9_-]+[.](p12|cer)', path) and re.fullmatch(r'[0-9a-f]{40}', entry.get('sha', '')):
+            if path in paths: return dict(result, limitation='Existing certificate tree contained an ambiguous duplicate path.')
+            paths[path] = entry
+    def decrypted_blob(entry, kind):
         try:
-            blob=client.get('/repos/' + CONFIG['match_repository'] + '/git/blobs/' + e['sha'])
-            if blob.get('encoding') != 'base64': continue
-            encrypted=base64.b64decode(blob['content'])
-            if len(encrypted) > 2 * 1024 * 1024: continue
-            for raw in decrypt_match_candidates(encrypted,password):
+            blob = client.get('/repos/' + CONFIG['match_repository'] + '/git/blobs/' + entry['sha'])
+            count(kind + '_blob_get_succeeded')
+            if blob.get('encoding') != 'base64' or not isinstance(blob.get('content'), str):
+                count(kind + '_blob_encoding_invalid', True); return []
+            encrypted = base64.b64decode(b''.join(blob['content'].encode().split()), validate=True)
+            if not encrypted or len(encrypted) > 2 * 1024 * 1024:
+                count(kind + '_blob_size_invalid', True); return []
+            values = list(decrypt_match_candidates(encrypted, password))
+            if not values: count(kind + '_decrypt_no_candidate', True)
+            else: count(kind + '_decrypt_succeeded')
+            return values
+        except AuditError as error:
+            count(kind + '_metadata_get_failed', True)
+            result.setdefault('limitations', []).append({'reason': str(error), 'http_status': error.http_status})
+        except Exception: count(kind + '_decrypt_or_encoding_failed', True)
+        return []
+    for e in sorted(relevant, key=lambda entry: entry['path']):
+        count('private_key_candidate_selected')
+        paired = paths.get(e['path'].removesuffix('.p12') + '.cer')
+        if paired: count('exact_paired_certificate_selected')
+        else: count('paired_certificate_path_missing', True)
+        key_values = decrypted_blob(e, 'private_key')
+        if not key_values: continue
+        cert_values = decrypted_blob(paired, 'paired_certificate') if paired else []
+        for raw in key_values:
+            for certificate_raw in cert_values or [None]:
                 try:
-                    check=certificate_key_check(raw,CONFIG['team'])
-                    if not check or apple is None: continue
+                    check=certificate_key_check(raw,CONFIG['team'],certificate_raw,result)
+                    if not check: continue
+                    if apple is None:
+                        count('current_apple_client_missing', True); continue
                     identifier=e['path'].rsplit('/',1)[-1].removesuffix('.p12')
-                    native=apple.get('/v1/certificates/'+quote(identifier,safe='')).get('data',{}).get('attributes',{})
+                    resource=apple.get('/v1/certificates/'+quote(identifier,safe='')).get('data',{})
+                    count('current_apple_certificate_get_succeeded')
+                    if resource.get('id') != identifier:
+                        count('current_apple_certificate_id_mismatch', True); continue
+                    native=resource.get('attributes',{})
                     from cryptography import x509
                     from cryptography.hazmat.primitives import hashes
-                    native_cert=x509.load_der_x509_certificate(base64.b64decode(native.get('certificateContent','')))
-                    if native_cert.fingerprint(hashes.SHA256()).hex() != check['fingerprint']: continue
+                    try: native_cert=x509.load_der_x509_certificate(base64.b64decode(native.get('certificateContent',''), validate=True))
+                    except Exception:
+                        count('current_apple_certificate_parse_failed', True); continue
+                    if native_cert.fingerprint(hashes.SHA256()).hex() != check['fingerprint']:
+                        count('current_apple_certificate_fingerprint_mismatch', True); continue
+                    count('current_apple_certificate_fingerprint_verified')
                     classes=eligible_certificate_classes(native.get('certificateType'))
+                    if not classes:
+                        count('current_apple_certificate_type_ineligible', True); continue
+                    count('current_apple_certificate_type_verified')
                     for kind in classes:
                         if not result[kind]:
                             result[kind]=True
                             result['selected'][kind]={'certificate_id':identifier,'sha256':check['fingerprint'],'type':native['certificateType'],'expires_at':check['expires_at'],'existing_private_key_challenge_verified':True,'exact_current_apple_certificate_verified':True}
+                    count('verified_' + check['key_format'])
                     break
                 except AuditError as error:
+                    count('current_apple_certificate_get_failed', True)
                     result.setdefault('limitations',[]).append({'reason':str(error),'http_status':error.http_status})
-                except Exception: continue
-        except Exception: continue
+                except Exception: count('bounded_certificate_check_failed', True)
     result['note']='Usability matches exact current Apple certificate GET and local private-key challenge under the encrypted store, not an archive/export result. Missing/failed material is unverified; no new certificate is justified automatically.'
     return result
 

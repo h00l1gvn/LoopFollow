@@ -116,7 +116,7 @@ class Guards(unittest.TestCase):
         class AppleClient:
             native_type='DEVELOPMENT'
             def get(self,path):
-                return {'data':{'attributes':{'certificateContent':base64.b64encode(cert.public_bytes(serialization.Encoding.DER)).decode(),'certificateType':self.native_type}}}
+                return {'data':{'id':'SYNTHETIC','attributes':{'certificateContent':base64.b64encode(cert.public_bytes(serialization.Encoding.DER)).decode(),'certificateType':self.native_type}}}
         apple=AppleClient()
         entries=[{'path':'certs/distribution/SYNTHETIC.p12','sha':'b'*40}]
         with patch.dict(os.environ,{'MATCH_PASSWORD':'synthetic-only'}), patch.object(audit,'decrypt_match_candidates',lambda *_:iter([data])):
@@ -131,6 +131,95 @@ class Guards(unittest.TestCase):
         expired=x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key()).serial_number(2).not_valid_before(now-timedelta(days=3)).not_valid_after(now-timedelta(days=1)).sign(key,hashes.SHA256())
         expired_data=pkcs12.serialize_key_and_certificates(b'synthetic',key,expired,None,serialization.NoEncryption())
         self.assertFalse(audit.certificate_key_check(expired_data,audit.CONFIG['team']))
+
+    @staticmethod
+    def material(team=None, expired=False):
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.x509.oid import NameOID
+        key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+        name=x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'synthetic-contact-must-not-escape'),x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME,team or audit.CONFIG['team'])])
+        now=datetime.now(timezone.utc)
+        cert=x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(now-timedelta(days=3)).not_valid_after(now+timedelta(days=-1 if expired else 2)).sign(key,hashes.SHA256())
+        return key,cert
+
+    @staticmethod
+    def encrypted_material(raw, password='synthetic-only'):
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        import hashlib
+        salt=b'12345678'
+        keyiv=hashlib.pbkdf2_hmac('sha256',password.encode(),salt,10000,68)
+        value=AESGCM(keyiv[:32]).encrypt(keyiv[32:44],raw,keyiv[44:])
+        return base64.b64encode(b'match_encrypted_v2__'+salt+value[-16:]+value[:-16])
+
+    def pem_pair_fixture(self, certificate_override=None, paired_path='certs/distribution/SYNTHETIC.cer', apple_id='SYNTHETIC'):
+        from cryptography.hazmat.primitives import serialization
+        key,cert=self.material()
+        pem=key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.TraditionalOpenSSL,serialization.NoEncryption())
+        der=(certificate_override or cert).public_bytes(serialization.Encoding.DER)
+        blobs={'a'*40:self.encrypted_material(pem),'b'*40:self.encrypted_material(der)}
+        entries=[{'path':'certs/distribution/SYNTHETIC.p12','sha':'a'*40},{'path':paired_path,'sha':'b'*40}]
+        calls=[]
+        class BlobClient:
+            def get(self,path):
+                calls.append(path)
+                raw=blobs[path.rsplit('/',1)[-1]]
+                return {'encoding':'base64','content':base64.b64encode(raw).decode()}
+        class AppleClient:
+            def get(self,path):
+                calls.append(path)
+                return {'data':{'id':apple_id,'attributes':{'certificateContent':base64.b64encode(cert.public_bytes(serialization.Encoding.DER)).decode(),'certificateType':'DISTRIBUTION'}}}
+        return BlobClient(),entries,AppleClient(),calls
+
+    def test_fastlane_pem_p12_exact_sibling_der_and_safe_stage_counts(self):
+        client,entries,apple,calls=self.pem_pair_fixture()
+        with patch.dict(os.environ,{'MATCH_PASSWORD':'synthetic-only'}):
+            result=audit.audit_existing_certificate_keys(client,entries,apple)
+        self.assertTrue(result['distribution'])
+        self.assertTrue(result['mac_app_distribution'])
+        self.assertEqual(result['selected']['distribution']['certificate_id'],'SYNTHETIC')
+        self.assertEqual(result['stage_counts']['verified_pem_with_paired_certificate'],1)
+        for stage in ('private_key_blob_get_succeeded','paired_certificate_blob_get_succeeded','private_key_decrypt_succeeded','paired_certificate_decrypt_succeeded','certificate_team_verified','certificate_dates_verified','private_key_certificate_match','private_key_challenge_verified','current_apple_certificate_fingerprint_verified'):
+            self.assertEqual(result['stage_counts'][stage],1)
+        self.assertEqual(result['failure_counts'],{})
+        self.assertEqual(len(calls),3)
+        rendered=json.dumps(result)
+        for forbidden in ('synthetic-contact-must-not-escape','PRIVATE KEY','synthetic-only','BEGIN CERTIFICATE'):
+            self.assertNotIn(forbidden,rendered)
+
+    def test_pem_requires_exact_sibling_not_different_certificate_path(self):
+        for path in ('certs/distribution/OTHER.cer','certs/mac_app_distribution/SYNTHETIC.cer'):
+            client,entries,apple,calls=self.pem_pair_fixture(paired_path=path)
+            with patch.dict(os.environ,{'MATCH_PASSWORD':'synthetic-only'}):
+                result=audit.audit_existing_certificate_keys(client,entries,apple)
+            self.assertEqual(result['selected'],{})
+            self.assertEqual(result['failure_counts']['paired_certificate_missing'],1)
+            self.assertEqual(len(calls),1)
+
+    def test_pair_mismatch_wrong_team_and_expiry_have_bounded_reasons(self):
+        from cryptography.hazmat.primitives import serialization
+        key,cert=self.material()
+        pem=key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.TraditionalOpenSSL,serialization.NoEncryption())
+        for reason,other in (('private_key_certificate_mismatch',self.material()[1]),('certificate_team_mismatch',self.material('WRONGTEAM1')[1]),('certificate_outside_validity',self.material(expired=True)[1])):
+            diagnostics={}
+            self.assertFalse(audit.certificate_key_check(pem,audit.CONFIG['team'],other.public_bytes(serialization.Encoding.DER),diagnostics))
+            self.assertEqual(diagnostics['failure_counts'],{reason:1})
+            self.assertNotIn('synthetic-contact-must-not-escape',json.dumps(diagnostics))
+
+    def test_current_certificate_id_mismatch_and_decrypt_failure_are_not_invalid_key_claims(self):
+        client,entries,apple,calls=self.pem_pair_fixture(apple_id='DIFFERENT')
+        with patch.dict(os.environ,{'MATCH_PASSWORD':'synthetic-only'}):
+            result=audit.audit_existing_certificate_keys(client,entries,apple)
+        self.assertEqual(result['selected'],{})
+        self.assertEqual(result['failure_counts']['current_apple_certificate_id_mismatch'],1)
+        client,entries,apple,calls=self.pem_pair_fixture()
+        with patch.dict(os.environ,{'MATCH_PASSWORD':'wrong-password'}):
+            result=audit.audit_existing_certificate_keys(client,entries,apple)
+        self.assertEqual(result['selected'],{})
+        self.assertEqual(result['failure_counts']['private_key_decrypt_or_encoding_failed'],1)
+        self.assertFalse(any('/v1/certificates/' in value for value in calls))
+        self.assertNotIn('invalid key',json.dumps(result).lower())
 
 
 if __name__=='__main__': unittest.main()
