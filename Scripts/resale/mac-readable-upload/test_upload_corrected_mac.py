@@ -114,5 +114,15 @@ class Guards(unittest.TestCase):
             path=pathlib.Path(tmp)/self.upload['intent_name'];path.write_text('{}')
             with patch.object(client,'api',return_value=row),patch('subprocess.run',side_effect=AssertionError('no write')):
                 with self.assertRaises(u.Stop):client.upload_journal(path)
+    def test_unexpected_later_result_between_initial_read_and_intent_stops(self):
+        client=u.GitHub(self.scope,self.upload)
+        for write_key,existing_keys in [('resolution_name',['result_name']),('intent_name',['resolution_name','result_name']),
+                                        ('result_name',['resolution_name'])]:
+            row=self.release()
+            for i,key in enumerate(existing_keys):row['assets'].append({'name':self.upload[key],'id':9+i,'state':'uploaded'})
+            with self.subTest(write=write_key),tempfile.TemporaryDirectory() as tmp:
+                path=pathlib.Path(tmp)/self.upload[write_key];path.write_text('{}')
+                with patch.object(client,'api',return_value=row),patch('subprocess.run',side_effect=AssertionError('no write')):
+                    with self.assertRaisesRegex(u.Stop,'journal_stage'):client.upload_journal(path)
 
 if __name__=='__main__':unittest.main()

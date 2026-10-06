@@ -138,10 +138,14 @@ class GitHub(v.GitHub):
         base='repos/'+self.scope['private_repository']
         row=self.api(base+'/releases/'+str(self.rid));release_check(row,self.scope,self.upload,False)
         need(not any(a['name']==path.name for a in row['assets']),'prior_corrected_upload_journal_stop_no_retry')
+        stages=[self.upload[k] for k in ['resolution_name','intent_name','result_name']]
+        required=set(base_assets(self.scope,self.upload))|set(stages[:stages.index(path.name)])
+        need({a['name'] for a in row['assets']}==required,'unexpected_corrected_upload_journal_stage_stop_no_retry')
         result=subprocess.run(['gh','release','upload',self.scope['new_private_release_tag'],str(path),
                                '--repo',self.scope['private_repository']],capture_output=True,timeout=120)
         need(result.returncode==0,'corrected_upload_journal_write_unknown_stop_no_retry')
         row=self.api(base+'/releases/'+str(self.rid));release_check(row,self.scope,self.upload,False)
+        need({a['name'] for a in row['assets']}==required|{path.name},'corrected_upload_journal_stage_readback_unknown')
         matches=[a for a in row['assets'] if a['name']==path.name]
         need(len(matches)==1,'corrected_upload_journal_readback_unknown')
         raw=self.api(base+'/releases/assets/'+str(matches[0]['id']),binary=True)
