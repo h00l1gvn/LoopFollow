@@ -51,6 +51,22 @@ def direct_profile_plan(scope,family,selected):
         profiles.require(re.fullmatch(r'[A-Za-z0-9_-]{1,80}',row.get('native_profile_id','')) and re.fullmatch(r'[0-9a-f]{64}',row.get('sha256','')) and re.fullmatch(r'[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}',row.get('uuid','')),'Direct native profile identity/hash invalid.')
     return {r['bundle_id']:r for r in rows}
 
+def macos_import_pkcs12(key,cert,password):
+    """Ephemeral macOS-import format; outer protected artifact remains AES-GCM/RSA.
+
+    cryptography documents that OpenSSL 3 defaults are unreadable by some
+    macOS versions. PBESv1 3DES/SHA1 is only a keychain import compatibility
+    container, never the at-rest/transport security boundary.
+    """
+    from cryptography.hazmat.primitives import serialization,hashes
+    from cryptography.hazmat.primitives.serialization import pkcs12
+    profiles.require(isinstance(password,str) and len(password)>=32,'Private ephemeral import password required.')
+    encryption=(serialization.PrivateFormat.PKCS12.encryption_builder().kdf_rounds(50000).key_cert_algorithm(pkcs12.PBES.PBESv1SHA1And3KeyTripleDESCBC).hmac_hash(hashes.SHA1()).build(password.encode()))
+    raw=pkcs12.serialize_key_and_certificates(b'ResaleBurrow-existing-identity',key,cert,None,encryption)
+    checked_key,checked_cert,cas=pkcs12.load_key_and_certificates(raw,password.encode())
+    profiles.require(checked_key is not None and checked_cert is not None and not cas and checked_cert.public_bytes(serialization.Encoding.DER)==cert.public_bytes(serialization.Encoding.DER) and checked_key.public_key().public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo)==key.public_key().public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo),'Ephemeral compatibility container round-trip differs.')
+    return raw
+
 def restore(client,apple,scope,family,match_commit,output,password,p12_password):
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.serialization import pkcs12
@@ -79,7 +95,7 @@ def restore(client,apple,scope,family,match_commit,output,password,p12_password)
     for kind,folder,identifier,fingerprint in [('signing_certificate','distribution',profiles.CERT_ID,profiles.CERT_SHA)]+([('installer_certificate','mac_installer_distribution',profiles.INSTALLER_ID,profiles.INSTALLER_SHA)] if family=='macos' else []):
         key,cert,info=key_pair(values['certs/'+folder+'/'+identifier+'.p12'],values['certs/'+folder+'/'+identifier+'.cer'],profiles.TEAM,fingerprint)
         info.update(type='DISTRIBUTION' if kind=='signing_certificate' else 'MAC_INSTALLER_DISTRIBUTION',certificate_id=identifier)
-        path=output/(kind+'.p12');private_bytes(path,pkcs12.serialize_key_and_certificates(b'ResaleBurrow-existing-identity',key,cert,None,serialization.BestAvailableEncryption(p12_password.encode())))
+        path=output/(kind+'.p12');private_bytes(path,macos_import_pkcs12(key,cert,p12_password))
         info['p12_file']=str(path);info['p12_file_sha256']=hashlib.sha256(path.read_bytes()).hexdigest();metadata[kind]=info
     rows=[]
     for target in selected:

@@ -8,6 +8,14 @@ import export_resale_family as export
 import test_resale_apple_audit as fixtures
 SCOPE=json.loads(Path(__file__).with_name('signing-export-scope.json').read_text())
 class Guards(unittest.TestCase):
+    def test_pkcs12_compatibility_container_exact_key_certificate_and_legacy_oids(self):
+        from cryptography.hazmat.primitives.serialization import pkcs12,Encoding
+        key,cert=fixtures.Guards.material();raw=restore.macos_import_pkcs12(key,cert,'x'*48)
+        # PKCS12 pbeWithSHA1And3-KeyTripleDES-CBC and SHA1 digest OIDs.
+        self.assertIn(bytes.fromhex('060a2a864886f70d010c0103'),raw);self.assertIn(bytes.fromhex('06052b0e03021a'),raw)
+        k,c,cas=pkcs12.load_key_and_certificates(raw,b'x'*48);self.assertEqual(c.public_bytes(Encoding.DER),cert.public_bytes(Encoding.DER));self.assertEqual(k.public_key().public_numbers(),key.public_key().public_numbers());self.assertFalse(cas)
+        with self.assertRaises(ValueError):pkcs12.load_key_and_certificates(raw,b'wrong')
+        with self.assertRaises(audit.AuditError):restore.macos_import_pkcs12(key,cert,'short')
     def direct_scope(self):return json.loads(Path(__file__).with_name('ios-direct-signing-export-scope.json').read_text())
     def test_direct_profile_mode_rejects_other_family_and_identity_drift(self):
         scope=self.direct_scope();selected=[t for t in scope['targets'] if t['family']=='ios'];plan=restore.direct_profile_plan(scope,'ios',selected);self.assertEqual(len(plan),4)
