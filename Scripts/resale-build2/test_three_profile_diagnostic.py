@@ -1,8 +1,15 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 import diagnose_three_push_profiles as d
 from test_three_push_profiles import Fake,SCOPE,CERT
 class ReadOnly(unittest.TestCase):
+ def test_workflow_uses_existing_envelope_scope(self):
+  root=Path(__file__).resolve().parents[2]
+  workflow=(root/'.github/workflows/resale-build2-three-profile-diagnostic.yml').read_text()
+  scope=root/'Scripts/resale-build2/three-push-profile-envelope-scope.json'
+  self.assertTrue(scope.is_file())
+  self.assertIn(scope.relative_to(root).as_posix(),workflow)
  def test_exact_collection_profile_read_without_unapproved_single_resource_or_posts(self):
   f=Fake(True)
   with patch.object(d.a,'certificate',return_value=CERT),patch.object(d.api,'decode_profile',side_effect=f.decode):v=d.run(f,SCOPE)
