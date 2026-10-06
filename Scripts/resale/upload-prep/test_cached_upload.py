@@ -162,6 +162,14 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(c.Invalid,'durable_prior'):self.stage(g)
     def test_ci_owner_gate_before_git_or_credentials(self):
         with self.assertRaisesRegex(c.Invalid,'owner_ci'):c.ci_gate({'GITHUB_ACTIONS':'true','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REPOSITORY':c.TOOLING_REPO,'GITHUB_ACTOR':'another'},Path('/tmp'))
+    def test_push_registration_cannot_reach_executor(self):
+        with self.assertRaisesRegex(c.Invalid,'owner_ci'):
+            c.ci_gate({'GITHUB_ACTIONS':'true','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':c.TOOLING_REPO,'GITHUB_ACTOR':'h00l1gvn'},Path('/tmp'))
+        s=(c.HERE/'resale-upload-cached.yml').read_text()
+        self.assertIn('branches: [codex/resale-burrow-cached-upload]',s)
+        self.assertIn('paths: [.github/workflows/resale-upload-cached.yml]',s)
+        self.assertEqual(sum(line.startswith('    if:') for line in s.splitlines()),1)
+        self.assertIn("    if: github.event_name == 'workflow_dispatch' && github.repository == 'h00l1gvn/LoopFollow' && github.actor == 'h00l1gvn'",s)
     def test_marker_scope_wrong_app_and_file_blocked(self):
         g=c.GitHub('TEST',JsonHTTP({}))
         for name in ['raw-key.json','upload-intent-other-0.1.0-1.json','upload-result-ios-0.2.0-1.json']:

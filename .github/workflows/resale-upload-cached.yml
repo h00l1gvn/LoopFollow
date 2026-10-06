@@ -1,5 +1,9 @@
 name: ResaleBurrow exact cached upload only
 on:
+  # Registration only: the sole job below rejects every push event.
+  push:
+    branches: [codex/resale-burrow-cached-upload]
+    paths: [.github/workflows/resale-upload-cached.yml]
   workflow_dispatch:
     inputs:
       family:
