@@ -6,19 +6,22 @@ require 'tmpdir'
 
 class BunwayTVReadinessWorkflowTests < Minitest::Test
   ROOT = File.expand_path('../..',__dir__).freeze
-  PATH = File.join(ROOT,'.github/workflows/check_BunwayTVReadiness.yml').freeze
+  PATH = File.join(ROOT,'.github/workflows/build_Bunway.yml').freeze
   def workflow; YAML.load_file(PATH); end
   def steps; workflow.fetch('jobs').fetch('readiness').fetch('steps'); end
   def step(id); steps.find { |entry| entry['id']==id }; end
 
   def test_dispatch_only_exact_repository_ref_and_shared_signing_lock
-    assert_equal ['workflow_dispatch'],workflow.fetch('on').keys
+    assert_equal ['workflow_dispatch','push'],workflow.fetch('on').keys
+    assert_equal false,workflow.fetch('on').fetch('workflow_dispatch').fetch('inputs').fetch('readiness_only').fetch('default')
     assert_equal false,workflow.fetch('on').fetch('workflow_dispatch').fetch('inputs').fetch('enable_cloudkit').fetch('default')
-    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release'",workflow.fetch('jobs').fetch('readiness').fetch('if')
+    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && github.event_name == 'workflow_dispatch' && inputs.readiness_only == true",workflow.fetch('jobs').fetch('readiness').fetch('if')
+    assert_includes workflow.fetch('jobs').fetch('build').fetch('if'),'inputs.readiness_only != true'
     assert_equal({'contents'=>'read'},workflow['permissions'])
     assert_equal({'group'=>'bunway-store-delivery','cancel-in-progress'=>false},workflow['concurrency'])
-    refute_includes File.read(PATH),'BUNWAY_CAPABILITIES_READY'
-    refute_includes File.read(PATH),'capabilities_ready'
+    refute_includes workflow.fetch('jobs').fetch('readiness').to_json,'BUNWAY_CAPABILITIES_READY'
+    refute_includes workflow.fetch('jobs').fetch('readiness').to_json,'capabilities_ready'
+    refute_includes workflow.fetch('jobs').fetch('readiness').to_json,'source_sha'
   end
 
   def test_only_existing_readiness_lane_and_secret_values_never_interpolated
@@ -27,7 +30,7 @@ class BunwayTVReadinessWorkflowTests < Minitest::Test
     assert_includes run,'umask 077'
     assert_includes run,"> \"$RUNNER_TEMP/bunway-tv-readiness.log\" 2>&1"
     refute_match(/\b(?:cat|tail|tee)\b/,run)
-    refute_match(/build_Bunway|release_Bunway|upload_to_testflight|generate_project|devicectl|simctl/,File.read(PATH))
+    refute_match(/build_Bunway|release_Bunway|upload_to_testflight|generate_project|devicectl|simctl/,workflow.fetch('jobs').fetch('readiness').to_json)
     assert_equal "${{ inputs.enable_cloudkit && 'true' || 'false' }}",step('probe')['env']['BUNWAY_TV_ENABLE_CLOUDKIT']
     steps.each { |entry| refute_includes entry['run'].to_s,'${{ secrets.' }
     checkout=steps.find { |entry| entry['uses'].to_s.start_with?('actions/checkout@') }
