@@ -1,0 +1,84 @@
+name: ResaleBurrow readable cached Mac package only (no upload)
+on:
+  push:
+    branches: [codex/resale-burrow-mac-readable-package]
+    paths: [.github/workflows/resale-mac-readable-package.yml, Scripts/resale/**]
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-one-readable-mac-package
+  cancel-in-progress: false
+jobs:
+  package:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/codex/resale-burrow-mac-readable-package'
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned audit dependency and test guards
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale/audit-requirements.txt
+          python -m unittest discover -s Scripts/resale -p test_mac_package_recovery.py -v
+          python -m unittest discover -s Scripts/resale -p test_mac_payload_permissions.py -v
+          python -m unittest discover -s Scripts/resale -p test_resale_export_validation.py -v
+          node --test Scripts/resale/test_protect_resale_artifact.cjs
+      - name: Verify private archive cache metadata and exact asset bytes
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-private" "$RUNNER_TEMP/resale-encrypted"
+          test "$(gh api repos/h00l1gvn/resale-burrow-native --jq .private)" = true
+          python - <<'PY'
+          import json,pathlib,os,secrets,subprocess,hashlib
+          scope=json.loads(pathlib.Path('Scripts/resale/mac-readable-package-scope.json').read_text())
+          r=scope['recovery'];asset=r['private_archive_asset_id']
+          if not isinstance(asset,int) or asset<=0:raise SystemExit('Exact private archive asset required.')
+          metadata=json.loads(subprocess.check_output(['gh','api','repos/h00l1gvn/resale-burrow-native/releases/assets/'+str(asset)]))
+          if metadata['id']!=asset or metadata['name']!=r['private_archive_asset_name'] or metadata['size']!=r['archive_bytes']:raise SystemExit('Private archive metadata differs.')
+          private=pathlib.Path(os.environ['RUNNER_TEMP'])/'resale-private'
+          with (private/'archive.tar.gz').open('xb') as f:subprocess.run(['gh','api','repos/h00l1gvn/resale-burrow-native/releases/assets/'+str(asset),'-H','Accept: application/octet-stream'],stdout=f,check=True)
+          if hashlib.sha256((private/'archive.tar.gz').read_bytes()).hexdigest()!=r['archive_sha256']:raise SystemExit('Private archive bytes differ.')
+          (private/'scope.json').write_text(json.dumps(scope))
+          (private/'p12-password').write_text(secrets.token_urlsafe(48))
+          PY
+      - name: GET-only existing installer certificate and private-key pair
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: |
+          python Scripts/resale/restore_resale_installer_only.py --scope "$RUNNER_TEMP/resale-private/scope.json" --output "$RUNNER_TEMP/resale-private/material" --p12-password-file "$RUNNER_TEMP/resale-private/p12-password" > "$RUNNER_TEMP/resale-private/restore.log" 2>&1
+      - name: One readable component package and exact stored CPIO/BOM validation
+        run: |
+          python Scripts/resale/package_resale_mac_archive.py --scope "$RUNNER_TEMP/resale-private/scope.json" --archive-tar "$RUNNER_TEMP/resale-private/archive.tar.gz" --manifest "$RUNNER_TEMP/resale-private/material/installer-manifest.json" --material-dir "$RUNNER_TEMP/resale-private/material" --work-dir "$RUNNER_TEMP/resale-private/package-work" --p12-password-file "$RUNNER_TEMP/resale-private/p12-password" > "$RUNNER_TEMP/resale-private/package-driver.log" 2>&1
+      - name: Protect package and diagnostics excluding signing material
+        if: always()
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-private/package-work" "$RUNNER_TEMP/resale-encrypted"
+          cp "$RUNNER_TEMP/resale-private/restore.log" "$RUNNER_TEMP/resale-private/package-work/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/resale-private/package-driver.log" "$RUNNER_TEMP/resale-private/package-work/" 2>/dev/null || true
+          tar -czf "$RUNNER_TEMP/resale-package.tar.gz" -C "$RUNNER_TEMP/resale-private" package-work
+          node Scripts/resale/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-package.tar.gz" "$RUNNER_TEMP/resale-encrypted/package.gcm" "$RUNNER_TEMP/resale-encrypted/package-envelope.json" Scripts/resale/resale-recipient-public.pem Scripts/resale/mac-readable-package-scope.json macos "$GITHUB_RUN_ID"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ResaleBurrow-protected-macos-readable-package-only-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Remove private runtime and temporary key material
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/resale-private" "$RUNNER_TEMP/resale-package.tar.gz"
