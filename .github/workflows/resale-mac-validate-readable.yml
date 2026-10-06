@@ -1,0 +1,69 @@
+name: ResaleBurrow corrected Mac Apple validation only (NO UPLOAD)
+on:
+  push:
+    branches: [codex/resale-burrow-mac-validate-readable]
+    paths: [.github/workflows/resale-mac-validate-readable.yml]
+  workflow_dispatch:
+    inputs:
+      release_id: {required: true, type: string}
+      manifest_asset_id: {required: true, type: string}
+      manifest_sha256: {required: true, type: string}
+      package_asset_id: {required: true, type: string}
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-single-readable-Mac-validation
+  cancel-in-progress: false
+jobs:
+  validation:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.actor == 'h00l1gvn' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/resale-burrow-mac-validate-readable'
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/setup-python@v6
+        with: {python-version: '3.12'}
+      - name: Pinned dependencies and offline validation-only guards
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale/mac-readable-validation/requirements.txt
+          python -m unittest discover -s Scripts/resale/mac-readable-validation -p test_validate_corrected_mac.py -v
+          python -m unittest discover -s Scripts/resale/mac-readable-validation -p test_resale_export_validation.py -v
+          python -m unittest discover -s Scripts/resale/mac-readable-validation -p test_mac_payload_permissions.py -v
+          node --test Scripts/resale/mac-readable-validation/test_protect_resale_artifact.cjs
+      - name: Verify exact cached package and fresh collision GET then validate ONCE
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          EXACT_RELEASE_ID: ${{ inputs.release_id }}
+          EXACT_MANIFEST_ASSET_ID: ${{ inputs.manifest_asset_id }}
+          EXACT_MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+          EXACT_PACKAGE_ASSET_ID: ${{ inputs.package_asset_id }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/readable-validation-log"
+          python Scripts/resale/mac-readable-validation/validate_corrected_mac.py --scope Scripts/resale/mac-readable-validation/corrected-package-scope.json --release-id "$EXACT_RELEASE_ID" --manifest-asset-id "$EXACT_MANIFEST_ASSET_ID" --manifest-sha256 "$EXACT_MANIFEST_SHA256" --package-asset-id "$EXACT_PACKAGE_ASSET_ID" --work-dir "$RUNNER_TEMP/readable-validation-work" > "$RUNNER_TEMP/readable-validation-log/driver.log" 2>&1
+      - name: Protect private validation result and diagnostics excluding API key
+        if: always()
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/readable-validation-work" "$RUNNER_TEMP/readable-validation-encrypted" "$RUNNER_TEMP/readable-validation-log"
+          rm -rf "$RUNNER_TEMP/readable-validation-work/ephemeral-private-keys"
+          cp "$RUNNER_TEMP/readable-validation-log/driver.log" "$RUNNER_TEMP/readable-validation-work/" 2>/dev/null || true
+          tar -czf "$RUNNER_TEMP/readable-validation-private.tar.gz" -C "$RUNNER_TEMP" readable-validation-work
+          node Scripts/resale/mac-readable-validation/protect_resale_artifact.cjs protect "$RUNNER_TEMP/readable-validation-private.tar.gz" "$RUNNER_TEMP/readable-validation-encrypted/validation.gcm" "$RUNNER_TEMP/readable-validation-encrypted/validation-envelope.json" Scripts/resale/mac-readable-validation/resale-recipient-public.pem Scripts/resale/mac-readable-validation/corrected-package-scope.json macos "$GITHUB_RUN_ID"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ResaleBurrow-protected-Mac-readable-validation-${{ github.run_id }}
+          path: ${{ runner.temp }}/readable-validation-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Remove private temporary package logs and key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/readable-validation-work" "$RUNNER_TEMP/readable-validation-log" "$RUNNER_TEMP/readable-validation-private.tar.gz"
