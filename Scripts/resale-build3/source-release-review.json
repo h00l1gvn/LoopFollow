@@ -1,0 +1,13 @@
+{
+  "root_release_reviewed": true,
+  "selected_icon_owner_approved": true,
+  "interim_artwork_rejected": true,
+  "source_sha": "949cf59c3355b0f6eccefab180c40f251defedf8",
+  "version": "0.1.0",
+  "build": "3",
+  "team": "N8K8G6QA36",
+  "group": "group.com.julienbell.ResaleBurrow",
+  "approved_icon_asset_path": "apple/AssetsSource/resale-burrow-approved-brand.png",
+  "approved_icon_sha256": "a2a2ffac269bca9b142b2b23971c254648c93048e2816416d9c5a4db420a36d5",
+  "authority": "Root reviewed exact curated native widget source and retained owner-selected artwork; explicit local freeze."
+}
