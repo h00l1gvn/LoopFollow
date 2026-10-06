@@ -2,19 +2,19 @@
 import copy,datetime,hashlib,json,os,pathlib,plistlib,subprocess,sys,tempfile,unittest,zipfile
 from unittest.mock import patch
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent))
-import export_bryan_build2 as b
+import export_julien_build2 as b
 NOW=datetime.datetime(2026,10,6,20,tzinfo=datetime.timezone.utc)
 CERT=b'synthetic-distribution-cert'
 
 def scope():
     s=json.loads((pathlib.Path(b.__file__).parent.parent/'signing-export-scope.json').read_text())
-    s.update(distribution='ad-hoc',delivery_lane='bryan-ad-hoc',profile_material_mode='native-adhoc-get-with-immutable-match-certificates')
+    s.update(distribution='ad-hoc',delivery_lane='julien-ad-hoc',profile_material_mode='native-adhoc-get-with-immutable-match-certificates')
     s['adhoc_native_profiles']=[]
     for i,identifier in enumerate(sorted(b.EXACT)):
         raw=('synthetic-cms-'+identifier).encode()
         s['adhoc_native_profiles'].append({'bundle_id':identifier,'native_profile_id':'NEWPIN'+str(i),'name':'Reviewed synthetic '+identifier,
           'uuid':f'{i+1:08x}-1234-1234-1234-123456789abc','sha256':hashlib.sha256(raw).hexdigest(),'profile_type':'IOS_APP_ADHOC',
-          'native_readback_verified':True,'owner_private_phone_membership_verified_by_exact_cms_hash':True})
+          'native_readback_verified':True,'owner_private_device_membership_verified_by_exact_cms_hash':True,'device_roles':['watch'] if identifier in {b.PHONE+'.watch',b.PHONE+'.watch.widgets'} else ['phone','ipad']})
     return s
 
 def profile(pin,phone='PRIVATE-SYNTHETIC-PHONE'):
@@ -23,7 +23,7 @@ def profile(pin,phone='PRIVATE-SYNTHETIC-PHONE'):
     if identifier in b.contract.PUSH:ent[b.contract.PUSH[identifier]]='production'
     return {'Name':pin['name'],'UUID':pin['uuid'],'TeamIdentifier':[b.contract.TEAM],'ApplicationIdentifierPrefix':[b.contract.TEAM],
       'Entitlements':ent,'CreationDate':NOW-datetime.timedelta(days=1),'ExpirationDate':NOW+datetime.timedelta(days=100),
-      'DeveloperCertificates':[CERT],'ProvisionedDevices':[phone]}
+      'DeveloperCertificates':[CERT],'ProvisionedDevices':['PRIVATE-SYNTHETIC-WATCH'] if identifier in {b.PHONE+'.watch',b.PHONE+'.watch.widgets'} else [phone,'PRIVATE-SYNTHETIC-IPAD']}
 
 class Guards(unittest.TestCase):
     def test_exact_build2_approved_four_scope(self):
@@ -42,7 +42,7 @@ class Guards(unittest.TestCase):
         s=scope();s['adhoc_native_profiles'][0]['device_identifier']='do-not-retain'
         with self.assertRaises(b.Error):b.scope_check(s)
     def test_missing_owner_cms_membership_or_duplicate_uuid_rejected(self):
-        s=scope();s['adhoc_native_profiles'][0]['owner_private_phone_membership_verified_by_exact_cms_hash']=False
+        s=scope();s['adhoc_native_profiles'][0]['owner_private_device_membership_verified_by_exact_cms_hash']=False
         with self.assertRaises(b.Error):b.scope_check(s)
         s=scope();s['adhoc_native_profiles'][0]['uuid']=s['adhoc_native_profiles'][1]['uuid']
         with self.assertRaises(b.Error):b.scope_check(s)
@@ -51,7 +51,7 @@ class Guards(unittest.TestCase):
         with patch.object(b.contract,'CERT_SHA',hashlib.sha256(CERT).hexdigest()):
             for identifier,pin in pins.items():
                 p=profile(pin);r=checker.check_raw(p,{'leaf_der':CERT,'entitlements':p['Entitlements']},identifier,NOW,('synthetic-cms-'+identifier).encode())
-                self.assertTrue(r['same_single_selected_phone_verified']);self.assertNotIn('PRIVATE',json.dumps(r))
+                self.assertTrue(r['exact_role_membership_verified']);self.assertNotIn('PRIVATE',json.dumps(r))
     def test_old_missing_aps_and_widget_aps_are_rejected(self):
         _,pins=b.scope_check(scope())
         for identifier in [b.PHONE,b.PHONE+'.watch',b.PHONE+'.widgets']:
@@ -61,7 +61,7 @@ class Guards(unittest.TestCase):
             with patch.object(b.contract,'CERT_SHA',hashlib.sha256(CERT).hexdigest()),self.assertRaises(b.contract.GateError):
                 b.AdhocProfiles(pins).check_raw(p,{'leaf_der':CERT,'entitlements':p['Entitlements']},identifier,NOW,('synthetic-cms-'+identifier).encode())
     def test_store_profiles_or_second_phone_not_accepted(self):
-        _,pins=b.scope_check(scope());checker=b.AdhocProfiles(pins);ids=list(pins)
+        _,pins=b.scope_check(scope());checker=b.AdhocProfiles(pins);ids=[b.PHONE,b.PHONE+'.widgets',b.PHONE+'.watch',b.PHONE+'.watch.widgets']
         with patch.object(b.contract,'CERT_SHA',hashlib.sha256(CERT).hexdigest()):
             for index,identifier in enumerate(ids[:2]):
                 pin=pins[identifier];p=profile(pin,phone='PRIVATE-PHONE-A' if index==0 else 'PRIVATE-PHONE-B')
@@ -107,10 +107,10 @@ class Guards(unittest.TestCase):
                 with self.assertRaises(b.Error):b.export_plan(s,wrong,mat,src,work)
                 with patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(b.Error):b.export_plan(s,m,mat,src,work)
     def test_workflow_scope_and_no_upload_or_device_commands(self):
-        text=(pathlib.Path(b.__file__).parent/'resale-build2-bryan-protected-export.yml').read_text()
+        text=(pathlib.Path(b.__file__).parent/'resale-build2-julien-direct.yml').read_text()
         self.assertIn(b.SOURCE,text);self.assertIn('github.run_attempt == 1',text);self.assertIn('family: [ios]',text)
         self.assertIn('--mode restore',text);self.assertIn('--mode export',text)
-        self.assertIn('adhoc-export-work',text);self.assertIn('bryan-signing-export-scope.json',text)
+        self.assertIn('export-work',text);self.assertIn('julien-signing-export-scope.json',text)
         for forbidden in ['upload_to_testflight','--upload-app','devicectl','idevice','MATCH_FORCE','export_build2_family.py --']:
             self.assertNotIn(forbidden,text)
         self.assertNotIn('xcodegen',b.RUBY_CONFIG)

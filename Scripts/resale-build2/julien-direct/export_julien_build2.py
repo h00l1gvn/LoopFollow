@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact Bryan build2 ad-hoc restore/export. No upload, install or device query.
+"""Exact Julien build2 ad-hoc restore/export. No upload, install or device query.
 
 The shared Store scripts stay unchanged. The reviewed scope carries only CMS
 hash membership attestations; raw platform diagnostics remain protected.
@@ -20,126 +20,129 @@ TOOLING='6e6f97a1b18781c7ffc6cf620f15293c29515fc5'
 PHONE=contract.BASE
 EXACT={PHONE,PHONE+'.widgets',PHONE+'.watch',PHONE+'.watch.widgets'}
 PINS_ALLOWED={'bundle_id','native_profile_id','name','sha256','uuid','profile_type',
- 'owner_private_phone_membership_verified_by_exact_cms_hash','native_readback_verified'}
+ 'owner_private_device_membership_verified_by_exact_cms_hash','native_readback_verified','device_roles'}
 require=base.require
 Error=base.ValidationError
 
 def scope_check(scope):
     targets=base.scope_check(scope,'ios')
-    require(scope.get('source_sha')==SOURCE and scope.get('tooling_sha')==TOOLING,'bryan_frozen_source_or_tooling_mismatch')
-    require(scope.get('source_frozen') is True and scope.get('final_artwork_owner_approved') is True,'bryan_source_artwork_freeze_required')
-    require(scope.get('distribution')=='ad-hoc' and scope.get('delivery_lane')=='bryan-ad-hoc'
+    require(scope.get('source_sha')==SOURCE and scope.get('tooling_sha')==TOOLING,'julien_frozen_source_or_tooling_mismatch')
+    require(scope.get('source_frozen') is True and scope.get('final_artwork_owner_approved') is True,'julien_source_artwork_freeze_required')
+    require(scope.get('distribution')=='ad-hoc' and scope.get('delivery_lane')=='julien-ad-hoc'
       and scope.get('profile_material_mode')=='native-adhoc-get-with-immutable-match-certificates'
-      and scope.get('match_material_commit')==MATCH,'bryan_distribution_or_material_mode_mismatch')
+      and scope.get('match_material_commit')==MATCH,'julien_distribution_or_material_mode_mismatch')
     rows=scope.get('adhoc_native_profiles')
-    require(isinstance(rows,list) and len(rows)==4 and {r.get('bundle_id') for r in rows}==EXACT,'bryan_exact_four_profile_pins_required')
-    require(len({r.get('native_profile_id') for r in rows})==4 and len({r.get('uuid') for r in rows})==4,'bryan_duplicate_profile_id_or_uuid')
+    require(isinstance(rows,list) and len(rows)==4 and {r.get('bundle_id') for r in rows}==EXACT,'julien_exact_four_profile_pins_required')
+    require(len({r.get('native_profile_id') for r in rows})==4 and len({r.get('uuid') for r in rows})==4,'julien_duplicate_profile_id_or_uuid')
     pins={}
     for row in rows:
-        require(set(row)<=PINS_ALLOWED,'bryan_scope_unexpected_private_fields')
+        require(set(row)<=PINS_ALLOWED,'julien_scope_unexpected_private_fields')
         require(row.get('profile_type')=='IOS_APP_ADHOC' and row.get('native_readback_verified') is True
-          and row.get('owner_private_phone_membership_verified_by_exact_cms_hash') is True,'bryan_exact_cms_membership_readback_required')
+          and row.get('owner_private_device_membership_verified_by_exact_cms_hash') is True,'julien_exact_cms_membership_readback_required')
+        require(row.get('device_roles')==(['watch'] if row['bundle_id'] in {PHONE+'.watch',PHONE+'.watch.widgets'} else ['phone','ipad']),'julien_profile_role_changed')
         require(isinstance(row.get('native_profile_id'),str) and re.fullmatch('[A-Za-z0-9_-]{1,80}',row['native_profile_id'])
-          and re.fullmatch('[0-9a-f]{64}',row.get('sha256','')) and re.fullmatch('[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}',row.get('uuid','')),'bryan_profile_pin_invalid')
-        require(isinstance(row.get('name'),str) and 0<len(row['name'].encode())<=300 and not re.search('[\x00-\x1f\x7f]',row['name']),'bryan_profile_name_invalid')
+          and re.fullmatch('[0-9a-f]{64}',row.get('sha256','')) and re.fullmatch('[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}',row.get('uuid','')),'julien_profile_pin_invalid')
+        require(isinstance(row.get('name'),str) and 0<len(row['name'].encode())<=300 and not re.search('[\x00-\x1f\x7f]',row['name']),'julien_profile_name_invalid')
         pins[row['bundle_id']]=row
     return targets,pins
 
 def utc(value):
-    require(isinstance(value,datetime.datetime),'bryan_profile_date_missing')
+    require(isinstance(value,datetime.datetime),'julien_profile_date_missing')
     return value.replace(tzinfo=datetime.timezone.utc) if value.tzinfo is None else value.astimezone(datetime.timezone.utc)
 
 class AdhocProfiles:
-    def __init__(self,pins):self.pins=pins;self.selected_phone=None
+    def __init__(self,pins):self.pins=pins;self.membership={}
     def check(self,profile,signature,identifier,now,profile_path):
         return self.check_raw(profile,signature,identifier,now,pathlib.Path(profile_path).read_bytes())
     def check_raw(self,profile,signature,identifier,now,raw):
         pin=self.pins[identifier]
         require(hashlib.sha256(raw).hexdigest()==pin['sha256'] and profile.get('Name')==pin['name']
-          and profile.get('UUID')==pin['uuid'],'bryan_embedded_cms_pin_mismatch')
+          and profile.get('UUID')==pin['uuid'],'julien_embedded_cms_pin_mismatch')
         ent=profile.get('Entitlements',{})
         require(profile.get('TeamIdentifier')==[contract.TEAM] and profile.get('ApplicationIdentifierPrefix')==[contract.TEAM]
           and isinstance(ent,dict) and base.identifier_entitlement(ent,identifier)
-          and ent.get('com.apple.developer.team-identifier')==contract.TEAM,'bryan_profile_explicit_identity_mismatch')
+          and ent.get('com.apple.developer.team-identifier')==contract.TEAM,'julien_profile_explicit_identity_mismatch')
         require(ent.get('com.apple.security.application-groups')==[contract.GROUP]
-          and ent.get('get-task-allow') is False and profile.get('ProvisionsAllDevices',False) is False,'bryan_release_group_required')
+          and ent.get('get-task-allow') is False and profile.get('ProvisionsAllDevices',False) is False,'julien_release_group_required')
         contract.require_push_grants(identifier,signature.get('entitlements',{}),ent)
         for claims in [ent,signature.get('entitlements',{})]:
-            require(not any(k in claims for k in ['com.apple.developer.icloud-services','com.apple.developer.weatherkit','com.apple.developer.carplay-driving-task']),'bryan_unexpected_sensitive_capability')
+            require(not any(k in claims for k in ['com.apple.developer.icloud-services','com.apple.developer.weatherkit','com.apple.developer.carplay-driving-task']),'julien_unexpected_sensitive_capability')
         created,expiry=utc(profile.get('CreationDate')),utc(profile.get('ExpirationDate'))
-        require(created<=now<expiry<=datetime.datetime(2027,9,16,2,46,2,tzinfo=datetime.timezone.utc),'bryan_profile_not_current')
+        require(created<=now<expiry<=datetime.datetime(2027,9,16,2,46,2,tzinfo=datetime.timezone.utc),'julien_profile_not_current')
         leaf=signature.get('leaf_der')
         require(isinstance(leaf,bytes) and hashlib.sha256(leaf).hexdigest()==contract.CERT_SHA
-          and profile.get('DeveloperCertificates')==[leaf],'bryan_profile_exact_signer_binding_required')
+          and profile.get('DeveloperCertificates')==[leaf],'julien_profile_exact_signer_binding_required')
         devices=profile.get('ProvisionedDevices')
-        require(isinstance(devices,list) and len(devices)==1 and isinstance(devices[0],str)
-          and re.fullmatch('[A-Za-z0-9-]{8,64}',devices[0]),'bryan_single_selected_phone_required')
-        if self.selected_phone is None:self.selected_phone=devices[0]
-        require(devices[0]==self.selected_phone,'bryan_profiles_selected_phone_mismatch')
+        roles=pin['device_roles'];count=len(roles);kind='watch' if roles==['watch'] else 'phone_ipad'
+        require(isinstance(devices,list) and len(devices)==count and all(isinstance(d,str) and re.fullmatch('[A-Za-z0-9-]{8,64}',d) for d in devices) and len(set(devices))==count,'julien_exact_role_count_required')
+        group=frozenset(d.strip().upper() for d in devices)
+        if kind not in self.membership:self.membership[kind]=group
+        require(group==self.membership[kind],'julien_same_role_membership_required')
+        if len(self.membership)==2:require(not self.membership['watch'] & self.membership['phone_ipad'],'julien_watch_phone_membership_overlap')
         return {'native_profile_id':pin['native_profile_id'],'profile_uuid':pin['uuid'],
           'profile_cms_sha256':pin['sha256'],'certificate_sha256':contract.CERT_SHA,
-          'expires_at':expiry.isoformat(),'profile_type':'IOS_APP_ADHOC','same_single_selected_phone_verified':True,
+          'expires_at':expiry.isoformat(),'profile_type':'IOS_APP_ADHOC','exact_role_membership_verified':True,
           'private_owner_membership_basis':'reviewed exact CMS hash','raw_hardware_identifier_or_fingerprint_written':False}
 
 def restore(client,apple,scope,output,password,p12_password,now=None,decoder=audit.decode_profile):
     targets,pins=scope_check(scope);now=now or datetime.datetime.now(datetime.timezone.utc)
-    require(password and len(p12_password)>=32,'bryan_private_restore_password_missing')
+    require(password and len(p12_password)>=32,'julien_private_restore_password_missing')
     current=profiles.certificate(apple,now)
     commit=client.get(material.PREFIX+'/git/commits/'+MATCH)
-    require(commit.get('sha')==MATCH and re.fullmatch('[0-9a-f]{40}',commit.get('tree',{}).get('sha','')),'bryan_match_commit_changed')
+    require(commit.get('sha')==MATCH and re.fullmatch('[0-9a-f]{40}',commit.get('tree',{}).get('sha','')),'julien_match_commit_changed')
     tree=client.get(material.PREFIX+'/git/trees/'+commit['tree']['sha']+'?recursive=1')
-    require(tree.get('truncated') is False and isinstance(tree.get('tree'),list),'bryan_match_tree_incomplete')
+    require(tree.get('truncated') is False and isinstance(tree.get('tree'),list),'julien_match_tree_incomplete')
     allowed={'certs/distribution/'+profiles.CERT_ID+ext for ext in ['.cer','.p12']};entries={}
     for row in tree['tree']:
         if row.get('path') in allowed:
-            require(row['path'] not in entries,'bryan_certificate_tree_ambiguous');entries[row['path']]=row
-    require(set(entries)==allowed,'bryan_existing_certificate_material_missing')
+            require(row['path'] not in entries,'julien_certificate_tree_ambiguous');entries[row['path']]=row
+    require(set(entries)==allowed,'julien_existing_certificate_material_missing')
     values={key:material.decrypt_entry(client,row,password) for key,row in entries.items()}
     key,cert,info=material.key_pair(values['certs/distribution/'+profiles.CERT_ID+'.p12'],values['certs/distribution/'+profiles.CERT_ID+'.cer'],contract.TEAM,contract.CERT_SHA)
-    output=pathlib.Path(output);require(not output.exists() and not output.is_symlink(),'bryan_restore_output_collision');output.mkdir(parents=True,mode=0o700);output.chmod(0o700)
+    output=pathlib.Path(output);require(not output.exists() and not output.is_symlink(),'julien_restore_output_collision');output.mkdir(parents=True,mode=0o700);output.chmod(0o700)
     path=output/'signing_certificate.p12';material.private_bytes(path,material.macos_import_pkcs12(key,cert,p12_password))
     info.update(type='DISTRIBUTION',certificate_id=profiles.CERT_ID,p12_file=str(path.resolve()),p12_file_sha256=base.digest(path))
     rows=[];checker=AdhocProfiles(pins)
     for identifier,target in targets.items():
         pin=pins[identifier];r=apple.get('/v1/profiles/'+pin['native_profile_id']).get('data',{});attrs=r.get('attributes',{})
         require(r.get('id')==pin['native_profile_id'] and attrs.get('name')==pin['name'] and attrs.get('profileType')=='IOS_APP_ADHOC'
-          and attrs.get('profileState')=='ACTIVE','bryan_exact_active_native_profile_required')
+          and attrs.get('profileState')=='ACTIVE','julien_exact_active_native_profile_required')
         content=attrs.get('profileContent','');raw=base64.b64decode(content,validate=True)
-        require(0<len(raw)<=2*1024**2 and hashlib.sha256(raw).hexdigest()==pin['sha256'],'bryan_profile_content_changed')
-        decoded=decoder(content);require(isinstance(decoded,dict),'bryan_profile_cms_unreadable')
+        require(0<len(raw)<=2*1024**2 and hashlib.sha256(raw).hexdigest()==pin['sha256'],'julien_profile_content_changed')
+        decoded=decoder(content);require(isinstance(decoded,dict),'julien_profile_cms_unreadable')
         evidence=checker.check_raw(decoded,{'leaf_der':current,'entitlements':decoded.get('Entitlements',{})},identifier,now,raw)
         dest=output/(pin['uuid']+'.mobileprovision');material.private_bytes(dest,raw)
         rows.append({**pin,**evidence,'target':target['target'],'verified':True,'certificate_sha256':contract.CERT_SHA,'private_profile_file':str(dest.resolve())})
     result={'schema':1,'source_sha':SOURCE,'family':'ios','distribution':'ad-hoc','team':contract.TEAM,'group':contract.GROUP,
       'match_commit':MATCH,'profiles':rows,'signing_certificate':info,'installer_certificate':None,
-      'same_single_phone_across_four_profiles':True,'watch_hardware_eligibility_verified':False,
+      'exact_phone_ipad_and_watch_membership_verified':True,'watch_profile_membership_verified':True,'physical_watch_install_verified':False,
       'network_mutations':False,'phone_queries':0,'keychain_modified':False,'uploaded':False}
     material.private_bytes(output/'restore-manifest.json',(json.dumps(result,indent=2)+'\n').encode());return result
 
 def export_plan(scope,manifest,material_dir,source,work):
     targets,pins=scope_check(scope)
-    require(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','bryan_reviewed_first_ci_export_required')
+    require(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','julien_reviewed_first_ci_export_required')
     require(manifest.get('schema')==1 and manifest.get('source_sha')==SOURCE and manifest.get('family')=='ios'
       and manifest.get('distribution')=='ad-hoc' and manifest.get('team')==contract.TEAM and manifest.get('group')==contract.GROUP
-      and manifest.get('match_commit')==MATCH and manifest.get('installer_certificate') is None,'bryan_restore_identity_mismatch')
+      and manifest.get('match_commit')==MATCH and manifest.get('installer_certificate') is None,'julien_restore_identity_mismatch')
     material_dir,source,work=map(lambda p:pathlib.Path(p).resolve(),[material_dir,source,work])
     root=pathlib.Path(os.environ['RUNNER_TEMP']).resolve();workspace=pathlib.Path(os.environ['GITHUB_WORKSPACE']).resolve()
     require(material_dir.is_relative_to(root) and work.is_relative_to(root) and source.is_relative_to(workspace)
-      and not work.is_relative_to(source) and not work.is_relative_to(material_dir),'bryan_private_runner_paths_required')
+      and not work.is_relative_to(source) and not work.is_relative_to(material_dir),'julien_private_runner_paths_required')
     rows=manifest.get('profiles',[])
-    require(len(rows)==4 and {r.get('bundle_id') for r in rows}==EXACT,'bryan_restore_exact_four_required')
+    require(len(rows)==4 and {r.get('bundle_id') for r in rows}==EXACT,'julien_restore_exact_four_required')
     mapping={}
     for row in rows:
         pin=pins[row['bundle_id']]
         require(all(row.get(k)==pin[k] for k in PINS_ALLOWED) and row.get('verified') is True
-          and row.get('certificate_sha256')==contract.CERT_SHA and row.get('target')==targets[row['bundle_id']]['target'],'bryan_restore_pin_mismatch')
+          and row.get('certificate_sha256')==contract.CERT_SHA and row.get('target')==targets[row['bundle_id']]['target'],'julien_restore_pin_mismatch')
         path=pathlib.Path(row.get('private_profile_file',''))
-        require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(material_dir) and base.digest(path)==pin['sha256'],'bryan_private_profile_hash_mismatch')
+        require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(material_dir) and base.digest(path)==pin['sha256'],'julien_private_profile_hash_mismatch')
         mapping[row['target']]={'bundle_id':row['bundle_id'],'uuid':row['uuid'],'name':row['name']}
     cert=manifest.get('signing_certificate',{});path=pathlib.Path(cert.get('p12_file',''))
     require(cert.get('verified') is True and cert.get('type')=='DISTRIBUTION' and cert.get('sha256')==contract.CERT_SHA
       and re.fullmatch('[0-9a-f]{40}',cert.get('sha1','')) and path.is_file() and not path.is_symlink()
-      and path.resolve().is_relative_to(material_dir) and base.digest(path)==cert.get('p12_file_sha256'),'bryan_private_exact_identity_required')
+      and path.resolve().is_relative_to(material_dir) and base.digest(path)==cert.get('p12_file_sha256'),'julien_private_exact_identity_required')
     return {'source_sha':SOURCE,'family':'ios','distribution':'ad-hoc','mapping':mapping,'certificate':cert,'installer':None}
 
 # The shared Ruby module provides runner-path and exact seven-target project
@@ -176,29 +179,29 @@ def validate_artifacts(archive,export,scope,report,now=None,runner=None):
     targets,pins=scope_check(scope);now=now or datetime.datetime.now(datetime.timezone.utc)
     runner=runner or base.Runner(pathlib.Path(report).parent/'adhoc-validation-private');checker=AdhocProfiles(pins)
     archive,export=pathlib.Path(archive),pathlib.Path(export)
-    require(archive.is_dir() and archive.suffix=='.xcarchive' and not archive.is_symlink(),'bryan_archive_required')
+    require(archive.is_dir() and archive.suffix=='.xcarchive' and not archive.is_symlink(),'julien_archive_required')
     props=base.load_plist(archive/'Info.plist').get('ApplicationProperties',{})
-    require(props.get('CFBundleIdentifier')==PHONE,'bryan_archive_primary_mismatch')
+    require(props.get('CFBundleIdentifier')==PHONE,'julien_archive_primary_mismatch')
     app_path=contract.safe_relative(props.get('ApplicationPath'));primary=archive/'Products'/str(app_path)
     require(primary.resolve().is_relative_to((archive/'Products/Applications').resolve()) and list((archive/'Products/Applications').glob('*.app'))==[primary]
-      and {p.name for p in (archive/'Products').iterdir()}=={'Applications'},'bryan_archive_single_app_required')
+      and {p.name for p in (archive/'Products').iterdir()}=={'Applications'},'julien_archive_single_app_required')
     archive_rows=base.bundle_set(primary,targets,runner,now,profile_validator=checker.check)
-    require(export.is_dir() and not export.is_symlink(),'bryan_export_directory_required')
-    ipas=list(export.glob('*.ipa'));require(len(ipas)==1 and ipas[0].is_file() and not ipas[0].is_symlink(),'bryan_exact_one_ipa_required');ipa=ipas[0]
+    require(export.is_dir() and not export.is_symlink(),'julien_export_directory_required')
+    ipas=list(export.glob('*.ipa'));require(len(ipas)==1 and ipas[0].is_file() and not ipas[0].is_symlink(),'julien_exact_one_ipa_required');ipa=ipas[0]
     with zipfile.ZipFile(ipa) as z:
         entries=z.infolist();names=[r.filename for r in entries]
-        require(0<len(entries)<=100000 and len(set(names))==len(names),'bryan_duplicate_or_unbounded_ipa')
-        require(sum(e.file_size for e in entries)<=2*1024**3,'bryan_ipa_size_bound')
+        require(0<len(entries)<=100000 and len(set(names))==len(names),'julien_duplicate_or_unbounded_ipa')
+        require(sum(e.file_size for e in entries)<=2*1024**3,'julien_ipa_size_bound')
         for entry in entries:
             p=pathlib.PurePosixPath(entry.filename)
-            require(not p.is_absolute() and '..' not in p.parts and '\\' not in entry.filename and not stat.S_ISLNK(entry.external_attr>>16),'bryan_unsafe_ipa_member')
-    with tempfile.TemporaryDirectory(prefix='bryan-adhoc-validation-',dir=pathlib.Path(report).parent) as tmp:
+            require(not p.is_absolute() and '..' not in p.parts and '\\' not in entry.filename and not stat.S_ISLNK(entry.external_attr>>16),'julien_unsafe_ipa_member')
+    with tempfile.TemporaryDirectory(prefix='julien-adhoc-validation-',dir=pathlib.Path(report).parent) as tmp:
         dest=pathlib.Path(tmp)/'expanded';dest.mkdir(mode=0o700)
         expanded=base.extract_ipa(ipa,dest)
         export_rows=base.bundle_set(expanded,targets,runner,now,profile_validator=checker.check)
     result={'status':'passed','family':'ios','distribution':'ad-hoc','source_sha_basis':SOURCE,'version':'0.1.0','build':'2',
       'archive_bundles':archive_rows,'export_bundles':export_rows,'exact_bundle_count':4,'export_artifact_sha256':base.digest(ipa),
-      'same_single_selected_phone_verified':True,'watch_hardware_eligibility_verified':False,'raw_hardware_identifier_or_fingerprint_written':False,
+      'exact_phone_ipad_and_watch_membership_verified':True,'watch_profile_membership_verified':True,'physical_watch_install_verified':False,'raw_hardware_identifier_or_fingerprint_written':False,
       'signed_local_artifacts_verified':True,'phone_queries':0,'uploaded':False,'installed':False}
     base.private_write(report,json.dumps(result,indent=2)+'\n');return result
 
@@ -207,12 +210,12 @@ def build(scope,scope_file,manifest,material_dir,source,work,password_file,gemfi
     plan=export_plan(scope,manifest,material_dir,source,work)
     source,work,material_dir=map(lambda p:pathlib.Path(p).resolve(),[source,work,material_dir]);runner=store_driver.PrivateRunner(work)
     require(runner.run(['git','-C',source,'rev-parse','HEAD'],'source-sha').decode().strip()==SOURCE
-      and not runner.run(['git','-C',source,'status','--porcelain'],'source-clean'),'bryan_clean_frozen_source_required')
-    require(re.search('^Xcode 26[.]2$',runner.run(['/usr/bin/xcodebuild','-version'],'xcode-version').decode(),re.M),'bryan_xcode_26_2_required')
-    require(pathlib.Path(gemfile).is_file(),'bryan_pinned_gemfile_missing');os.environ['BUNDLE_GEMFILE']=str(pathlib.Path(gemfile).resolve())
-    password_file=pathlib.Path(password_file);require(password_file.is_file() and not password_file.is_symlink() and password_file.stat().st_mode&0o077==0,'bryan_private_password_required')
-    password=password_file.read_text().strip();require(len(password)>=32,'bryan_private_password_too_short')
-    keychain=material_dir/'resale-bryan-ephemeral.keychain-db';keychain_password=__import__('secrets').token_urlsafe(48);original=None;created=False;installed=[];cleanup=[]
+      and not runner.run(['git','-C',source,'status','--porcelain'],'source-clean'),'julien_clean_frozen_source_required')
+    require(re.search('^Xcode 26[.]2$',runner.run(['/usr/bin/xcodebuild','-version'],'xcode-version').decode(),re.M),'julien_xcode_26_2_required')
+    require(pathlib.Path(gemfile).is_file(),'julien_pinned_gemfile_missing');os.environ['BUNDLE_GEMFILE']=str(pathlib.Path(gemfile).resolve())
+    password_file=pathlib.Path(password_file);require(password_file.is_file() and not password_file.is_symlink() and password_file.stat().st_mode&0o077==0,'julien_private_password_required')
+    password=password_file.read_text().strip();require(len(password)>=32,'julien_private_password_too_short')
+    keychain=material_dir/'resale-julien-ephemeral.keychain-db';keychain_password=__import__('secrets').token_urlsafe(48);original=None;created=False;installed=[];cleanup=[]
     try:
         original=__import__('shlex').split(runner.run(['/usr/bin/security','list-keychains','-d','user'],'original-search-list').decode())
         runner.run(['/usr/bin/security','create-keychain','-p',keychain_password,keychain],'keychain-create');created=True
@@ -225,7 +228,7 @@ def build(scope,scope_file,manifest,material_dir,source,work,password_file,gemfi
             raw=pathlib.Path(row['private_profile_file']).read_bytes()
             for folder in [pathlib.Path.home()/'Library/MobileDevice/Provisioning Profiles',pathlib.Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles']:
                 folder.mkdir(parents=True,exist_ok=True);dest=folder/(row['uuid']+'.mobileprovision')
-                if dest.exists():require(not dest.is_symlink() and dest.read_bytes()==raw,'bryan_runner_profile_collision')
+                if dest.exists():require(not dest.is_symlink() and dest.read_bytes()==raw,'julien_runner_profile_collision')
                 else:material.private_bytes(dest,raw);installed.append(dest)
         plan_path=work/'manual-plan.json';material.private_bytes(plan_path,(json.dumps(plan)+'\n').encode())
         shared=pathlib.Path(__file__).resolve().parent.parent
@@ -235,12 +238,12 @@ def build(scope,scope_file,manifest,material_dir,source,work,password_file,gemfi
         runner.run(['/usr/bin/xcodebuild','-project',project,'-scheme','ResaleBurrowIOS','-configuration','Release','-destination','generic/platform=iOS','-archivePath',archive,'archive'],'archive',cwd=source,timeout=3600)
         runner.run(['/usr/bin/xcodebuild','-exportArchive','-archivePath',archive,'-exportPath',export,'-exportOptionsPlist',options],'export',cwd=source,timeout=1200)
         validation=validate_artifacts(archive,export,scope,work/'signed-validation.json')
-        ipa=next(export.glob('*.ipa'));final=export/'ResaleBurrow-Bryan-build2.ipa'
-        if ipa!=final:require(not final.exists(),'bryan_final_ipa_collision');ipa.rename(final)
+        ipa=next(export.glob('*.ipa'));final=export/'ResaleBurrow-Julien-build2.ipa'
+        if ipa!=final:require(not final.exists(),'julien_final_ipa_collision');ipa.rename(final)
         provenance={'schema':1,'source_sha':SOURCE,'tooling_sha':TOOLING,'delivery_sha':os.environ.get('GITHUB_SHA'),'run_id':os.environ.get('GITHUB_RUN_ID'),
-          'family':'ios','distribution':'ad-hoc','delivery_lane':'bryan-ad-hoc','version':'0.1.0','build':'2','team':contract.TEAM,'group':contract.GROUP,
+          'family':'ios','distribution':'ad-hoc','delivery_lane':'julien-ad-hoc','version':'0.1.0','build':'2','team':contract.TEAM,'group':contract.GROUP,
           'exact_bundle_ids':sorted(EXACT),'archived':True,'exported':True,'signed_validation_passed':True,'ipa_sha256':validation['export_artifact_sha256'],
-          'phone_queries':0,'installed':False,'uploaded':False,'watch_hardware_eligibility_verified':False,'profile_or_certificate_created_by_export':False}
+          'phone_queries':0,'installed':False,'uploaded':False,'watch_profile_membership_verified':True,'physical_watch_install_verified':False,'profile_or_certificate_created_by_export':False}
         base.private_write(work/'export-provenance.json',json.dumps(provenance,indent=2)+'\n')
     finally:
         if original is not None:
@@ -255,7 +258,7 @@ def build(scope,scope_file,manifest,material_dir,source,work,password_file,gemfi
             except OSError:cleanup.append('new_profile_cleanup_failed')
         base.private_write(work/'runner-step-receipt.json',json.dumps({'steps':runner.steps,'canonical_source_untouched':True,'runner_only_project_signing_configuration':True,
           'ephemeral_cleanup_verified':not cleanup,'cleanup_failures':cleanup,'phone_queries':0,'uploaded':False,'installed':False},indent=2)+'\n')
-        require(not cleanup,'bryan_ephemeral_cleanup_incomplete')
+        require(not cleanup,'julien_ephemeral_cleanup_incomplete')
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--mode',choices=['restore','export'],required=True)
@@ -264,23 +267,23 @@ def main(argv=None):
     p.add_argument('--work-dir',type=pathlib.Path);p.add_argument('--bundle-gemfile',type=pathlib.Path)
     p.add_argument('--release-review',type=pathlib.Path);p.add_argument('--source-manifest',type=pathlib.Path);a=p.parse_args(argv)
     try:
-        require(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','bryan_reviewed_first_ci_required')
-        require(a.material_dir.resolve().is_relative_to(pathlib.Path(os.environ['RUNNER_TEMP']).resolve()),'bryan_material_not_private_runner')
+        require(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','julien_reviewed_first_ci_required')
+        require(a.material_dir.resolve().is_relative_to(pathlib.Path(os.environ['RUNNER_TEMP']).resolve()),'julien_material_not_private_runner')
         scope=json.loads(a.scope.read_text());scope_check(scope)
         if a.mode=='restore':
-            require(os.environ.get('TEAMID')==contract.TEAM,'bryan_team_environment_mismatch')
-            require(a.p12_password_file.is_file() and not a.p12_password_file.is_symlink() and a.p12_password_file.stat().st_mode&0o077==0,'bryan_private_password_required')
+            require(os.environ.get('TEAMID')==contract.TEAM,'julien_team_environment_mismatch')
+            require(a.p12_password_file.is_file() and not a.p12_password_file.is_symlink() and a.p12_password_file.stat().st_mode&0o077==0,'julien_private_password_required')
             # MaterialReadClient authorizes exact profiles from native_profiles;
             # supply only this separate reviewed four-profile allowlist.
             get_scope={**scope,'native_profiles':scope['adhoc_native_profiles']}
             restore(material.CertificateReadClient(os.environ['GH_PAT']),material.ProfileReadClient(audit.apple_token(os.environ),get_scope),scope,a.material_dir,
               os.environ['MATCH_PASSWORD'],a.p12_password_file.read_text().strip())
         else:
-            require(all([a.source_dir,a.work_dir,a.bundle_gemfile,a.release_review,a.source_manifest]),'bryan_export_arguments_missing')
+            require(all([a.source_dir,a.work_dir,a.bundle_gemfile,a.release_review,a.source_manifest]),'julien_export_arguments_missing')
             build(scope,a.scope.resolve(),json.loads((a.material_dir/'restore-manifest.json').read_text()),a.material_dir,a.source_dir,a.work_dir,a.p12_password_file,
               a.bundle_gemfile,json.loads(a.release_review.read_text()),json.loads(a.source_manifest.read_text()))
         print(json.dumps({'status':'completed','mode':a.mode,'phone_queries':0,'uploaded':False,'installed':False}));return 0
     except (Error,contract.GateError,audit.AuditError) as e:print(json.dumps({'status':'stopped','code':str(e),'phone_queries':0,'uploaded':False}));return 1
-    except Exception:print(json.dumps({'status':'stopped','code':'bryan_private_operation_failed','phone_queries':0,'uploaded':False}));return 1
+    except Exception:print(json.dumps({'status':'stopped','code':'julien_private_operation_failed','phone_queries':0,'uploaded':False}));return 1
 
 if __name__=='__main__':raise SystemExit(main())

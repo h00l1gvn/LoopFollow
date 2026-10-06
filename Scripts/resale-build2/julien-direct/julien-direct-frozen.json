@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "source_sha": "038c9e2b61b5b6c28355c478c883edee8372e330",
+  "version": "0.1.0",
+  "build": "2",
+  "files": [
+    {
+      "path": "artifact_crypto.cjs",
+      "sha256": "a1643a0828e04805f7aa6cde7acf0239a3fc9619cc971815d472d315d0177b3a"
+    },
+    {
+      "path": "audit-requirements.txt",
+      "sha256": "8cf710466bed3f56185c7ba0b4627049765cb5df2a9855b4abb987b52594ab15"
+    },
+    {
+      "path": "bryan/prepare_bryan_push_profiles.py",
+      "sha256": "b03a2b35836b3b562c42d3aad730fcbc16e032bf3842ffe53b71718a1233fb64"
+    },
+    {
+      "path": "build2_contract.py",
+      "sha256": "b74f76655008a53504f711a8000f3fd9f4af2529a783de0cf66bfd786d960510"
+    },
+    {
+      "path": "build2_profile_audit.py",
+      "sha256": "157f6c52e0be45b28564144a55f388e195008476752412e1e11c702cb09b7311"
+    },
+    {
+      "path": "configure_build2_signing.rb",
+      "sha256": "e78290edb1f73133207a9093ec66c01861f0683c150e05d53e5aa0ac20b38164"
+    },
+    {
+      "path": "export_build2_family.py",
+      "sha256": "b4d8edfb716b8166e00331ed1b702e6f552f56b1024c6e1ab0a96b8bf74bd693"
+    },
+    {
+      "path": "julien-direct/export_julien_build2.py",
+      "sha256": "d46d9e0418e1f522dcf78c6cdd36233f5323dc0e19e63c56ae02bb7d61506c3d"
+    },
+    {
+      "path": "julien-direct/julien-profile-preparation-scope.json",
+      "sha256": "77de0b1be20584d4e81066549f56a901abe74d472186c4b8424cc10f4d84f712"
+    },
+    {
+      "path": "julien-direct/prepare_julien_profiles.py",
+      "sha256": "0baa1099468a0ba4784f2e98c83fe426bfbf4930e749ea96887d1a6544f0deca"
+    },
+    {
+      "path": "julien-direct/resale-build2-julien-direct.yml",
+      "sha256": "02731dd822f3750bbf074939d3929297b55887391ae2c50fea3a82974023ca98"
+    },
+    {
+      "path": "julien-direct/test_export_julien_build2.py",
+      "sha256": "bd765274baec889f333e1105c1160ccf1e59cee803fbb2712729c9737ce265ae"
+    },
+    {
+      "path": "julien-direct/test_prepare_julien_profiles.py",
+      "sha256": "f9b08cc8d89a233beaa9190be520e51c6615e0707fc1ef6fb54c87754b1d5e6e"
+    },
+    {
+      "path": "mac_payload_permissions.py",
+      "sha256": "8cfcd540a45e95d685ccca6874c38c84b983ba85f31f0109a08d5f9f43b552e6"
+    },
+    {
+      "path": "protect_resale_artifact.cjs",
+      "sha256": "170ab027dbb2155fa859a4bc4e841d2f198346a0a334fdfc34cb2214bb128e6e"
+    },
+    {
+      "path": "resale-recipient-public.pem",
+      "sha256": "344f102576716781a265470b48f8e5d2644ecfc12a60edb19f4170d65d3cbe1e"
+    },
+    {
+      "path": "resale_apple_audit.py",
+      "sha256": "1ec975e20d66b08de3a48b9acba7dc59523fc13c9eb9b0ef27965f6c6992bc05"
+    },
+    {
+      "path": "restore_build2_material.py",
+      "sha256": "fb31f082b927087a76a145f5ef3e9ba2fc36d505163f690371a31cf6fef6439f"
+    },
+    {
+      "path": "scope.json",
+      "sha256": "58087176be80590f79c7b68b018d996eb82ea9fa2c1c25ff2e50cb99d005081e"
+    },
+    {
+      "path": "signing-export-scope.json",
+      "sha256": "58087176be80590f79c7b68b018d996eb82ea9fa2c1c25ff2e50cb99d005081e"
+    },
+    {
+      "path": "source-files.json",
+      "sha256": "846ee25c0a5624ee881f0360dc565106b96c1cf464319b98c1de131a61c89538"
+    },
+    {
+      "path": "source-release-review.json",
+      "sha256": "d6dccb19ebeeffc1f2b925c59b796273c8f0b2023831dbeecd6d243be33ab61e"
+    },
+    {
+      "path": "test_build2_contract.py",
+      "sha256": "9d97143a40d795300c0d10ed84b88e4ac2700379254a4bb53102e651c0fdcbd8"
+    },
+    {
+      "path": "test_build2_mac_payload.py",
+      "sha256": "112980519747f9d693a7328e5e7ae2236657dad1407ff267ad673f613b506392"
+    },
+    {
+      "path": "test_build2_profile_audit.py",
+      "sha256": "199081c270afe8d64744216c0ea95c005c9f43b6606d4134e4e18ae75aaf32f2"
+    },
+    {
+      "path": "test_build2_restore_export.py",
+      "sha256": "3a4010a79b275d0432ae88bc5b6f292770eba2b6fdbb5179ac903507b6b63c29"
+    },
+    {
+      "path": "test_configure_build2_signing.rb",
+      "sha256": "8dfb306013c076962fd3bd21a7ab251a4fdf19f92c36322d027c83c6eab18ac3"
+    },
+    {
+      "path": "test_protect_resale_artifact.cjs",
+      "sha256": "fc6863360dff4517dd90dc029c3097abbbb1eb4c02f7b9cee9c9888be99c22af"
+    },
+    {
+      "path": "test_resale_export_validation.py",
+      "sha256": "4a3a0c6594cf55a424d56c4d958d94b38911219de89cca8c0c31dae9e8a1884d"
+    },
+    {
+      "path": "validate_resale_export.py",
+      "sha256": "b199b01b4c0a54b80510bc3ecd2e194b9b7dd9357fa1a77cf87930ae8dca77d7"
+    }
+  ],
+  "focused_guards": 24,
+  "hardware_values_in_source": false,
+  "new_profile_bound": 4,
+  "source_or_bryan_changed": false
+}
