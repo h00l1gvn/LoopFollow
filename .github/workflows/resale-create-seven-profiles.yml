@@ -1,0 +1,75 @@
+name: ResaleBurrow exact-seven profile creation (no new certificates)
+on:
+  push:
+    branches: [codex/resale-burrow-seven-profiles]
+    paths:
+      - .github/workflows/resale-create-seven-profiles.yml
+      - Scripts/resale/**
+  workflow_dispatch:
+    inputs:
+      match_expected_head:
+        description: Reviewed current Match master SHA; stale head refuses writes
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-seven-profile-creation
+  cancel-in-progress: false
+jobs:
+  profiles:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/codex/resale-burrow-seven-profiles'
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale/audit-requirements.txt
+      - name: Verify synthetic profile, additive store and encrypted artifact guards
+        run: |
+          python -m unittest discover -s Scripts/resale -p 'test_resale_scoped_profiles.py' -v
+          python -m unittest discover -s Scripts/resale -p 'test_store_resale_profiles.py' -v
+          node --test Scripts/resale/test_protect_resale_artifact.cjs
+      - name: Create/reuse only seven verified owned App Store profiles
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-private"
+          python Scripts/resale/resale_scoped_profiles.py --scope Scripts/resale/signing-export-scope.json --output "$RUNNER_TEMP/resale-private/profiles" --execute-reviewed-profile-creation > "$RUNNER_TEMP/resale-private/profile-job.log" 2>&1
+      - name: Add only new seven encrypted paths to private Match master
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          EXPECTED_MATCH_HEAD: ${{ inputs.match_expected_head || '4d7f92fe5c81c32823e8ace5aca316ee98c8a53e' }}
+        run: |
+          python Scripts/resale/store_resale_profiles.py --scope Scripts/resale/signing-export-scope.json --profile-dir "$RUNNER_TEMP/resale-private/profiles" --expected-head "$EXPECTED_MATCH_HEAD" --execute-reviewed-profile-store-addition > "$RUNNER_TEMP/resale-private/store-job.log" 2>&1
+      - name: Encrypt exact profile/store receipt and private diagnostics
+        if: always()
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-private" "$RUNNER_TEMP/resale-encrypted"
+          tar -czf "$RUNNER_TEMP/resale-private.tar.gz" -C "$RUNNER_TEMP" resale-private
+          node Scripts/resale/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-private.tar.gz" "$RUNNER_TEMP/resale-encrypted/profiles.gcm" "$RUNNER_TEMP/resale-encrypted/profiles-envelope.json" Scripts/resale/resale-recipient-public.pem Scripts/resale/signing-export-scope.json ios "$GITHUB_RUN_ID"
+      - name: Preserve protected diagnostics only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ResaleBurrow-protected-profile-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Remove ephemeral private working files
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/resale-private" "$RUNNER_TEMP/resale-private.tar.gz"
