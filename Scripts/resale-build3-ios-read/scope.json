@@ -1,0 +1,16 @@
+{
+  "schema": "ReBurrow-exact-iOS-build3-read-1",
+  "source_sha": "526c52eb2dd0fb2591a2f7b65aaca26d3a3a39a6",
+  "team": "N8K8G6QA36",
+  "group": "group.com.julienbell.ResaleBurrow",
+  "version": "0.1.0",
+  "build": "3",
+  "app_id": "6819601040",
+  "bundle_id": "com.julienbell.ResaleBurrow",
+  "platform": "IOS",
+  "beta_group_id": "e83d545b-4efe-4492-8ccb-6bf41c1008ba",
+  "recipient_spki_sha256": "62d6dc6cd0253c7d427f63fbadd9953247a6312146df856689955371cd3e6358",
+  "GET_only": true,
+  "assignment_authorized": false,
+  "upload_authorized": false
+}
