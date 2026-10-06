@@ -11,6 +11,7 @@
 #
 
 require_relative "bunway/verify_profiles"
+require_relative "bunway/julien_devices"
 require_relative "bunway/testflight_groups"
 
 default_platform(:ios)
@@ -491,6 +492,48 @@ platform :ios do
         export_options: {iCloudContainerEnvironment: "Production", provisioningProfiles: signing_targets.keys.to_h { |bundle_id| [bundle_id, mapping[bundle_id]] }})
   end
 
+  desc "Build Bunway for Julien's registered iPhone and iPad with Production CloudKit (no upload/install)"
+  lane :build_BunwayJulien do
+    setup_ci if ENV['CI']
+    UI.user_error!("Confirm the selected Bunway source and Production capabilities before direct export.") unless ENV["BUNWAY_CAPABILITIES_READY"] == "true"
+    begin
+      devices = BunwayJulienDevices.parse(ENV["BUNWAY_JULIEN_DEVICE_UDIDS"])
+    rescue BunwayJulienDevices::Invalid => error
+      UI.user_error!(error.message)
+    end
+    identifier = "com.julienbell.bunway"
+    signing_targets = {identifier => "BunwayPhone", "#{identifier}.watchkitapp" => "BunwayWatch", "#{identifier}.widget" => "BunwayWidget"}
+    project_path = File.join(GITHUB_WORKSPACE, "BunwaySource", "apple", "Bunway.xcodeproj")
+    api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
+    previous = latest_testflight_build_number(app_identifier: identifier, platform: "ios", api_key: api_key, initial_build_number: 0)
+    generator = File.read(File.join(GITHUB_WORKSPACE, "BunwaySource", "apple", "generate_project.py"))
+    source_build = Integer(generator[/"CURRENT_PROJECT_VERSION":\s*"(\d+)"/, 1] || "5")
+    match(type: "adhoc", platform: "ios", readonly: false,
+          git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+          app_identifier: signing_targets.keys, force: true)
+    mapping = Actions.lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    update_project_team(path: project_path, teamid: TEAMID)
+    signing_targets.each do |bundle_id, target|
+      UI.user_error!("Missing the selected Bunway ad-hoc profile.") unless mapping[bundle_id]
+      begin
+        profile = BunwayProfileCheck.decode(BunwayProfileCheck.find_path(bundle_id, "adhoc", mapping[bundle_id]))
+        devices.each_value do |device|
+          BunwayProfileCheck.validate(profile, bundle_id, TEAMID,
+            cloud: bundle_id != "#{identifier}.widget", group: true,
+            push: bundle_id == identifier, weather: bundle_id == identifier,
+            environment: "Production", device: bundle_id == "#{identifier}.watchkitapp" ? nil : device)
+        end
+      rescue StandardError => error
+        UI.user_error!(error.message)
+      end
+      update_code_signing_settings(path: project_path, profile_name: mapping[bundle_id], code_sign_identity: "Apple Distribution", targets: [target])
+    end
+    gym(project: project_path, scheme: "BunwayPhone", export_method: "ad-hoc",
+        output_name: "BunwayJulien.ipa", configuration: "Release", destination: "generic/platform=iOS",
+        xcargs: "CURRENT_PROJECT_VERSION=#{[previous + 1, source_build].max}", buildlog_path: "buildlog-bunway-julien",
+        export_options: {iCloudContainerEnvironment: "Production", provisioningProfiles: signing_targets.keys.to_h { |bundle_id| [bundle_id, mapping[bundle_id]] }})
+  end
+
   desc "Upload Bunway iPhone, iPad and embedded Watch/widget to TestFlight"
   lane :release_BunwayPhone do
     group_id = BunwayTestFlightGroups.validate_group_id!(ENV["BUNWAY_PHONE_TESTFLIGHT_GROUP_ID"])
@@ -693,6 +736,13 @@ platform :tvos do
     api_key = app_store_connect_api_key(key_id: FASTLANE_KEY_ID, issuer_id: FASTLANE_ISSUER_ID, key_content: FASTLANE_KEY)
     previous = latest_testflight_build_number(app_identifier: identifier, platform: "appletvos", api_key: api_key, initial_build_number: 0)
     selected_build = [previous + 1, source_build].max
+    # tvOS requires APNS whenever CloudKit is signed into the app. This is the
+    # existing approved Bunway TV identifier; the refreshed profile below is
+    # the independent authorization check before any export or upload.
+    tv_bundle = Spaceship::ConnectAPI::BundleId.find(identifier)
+    UI.user_error!("The existing Bunway TV identifier could not be found.") unless tv_bundle
+    push_type = Spaceship::ConnectAPI::BundleIdCapability::Type::PUSH_NOTIFICATIONS
+    tv_bundle.create_capability(push_type) unless tv_bundle.get_capabilities.any? { |capability| capability.capability_type == push_type }
     match(type: "appstore", platform: "tvos", readonly: false,
           git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
           app_identifier: [identifier], force: true)
@@ -700,7 +750,7 @@ platform :tvos do
     UI.user_error!("Missing Bunway TV distribution profile") unless mapping[identifier]
     begin
       profile = BunwayProfileCheck.decode(BunwayProfileCheck.find_path(identifier, "appstore", mapping[identifier]))
-      BunwayProfileCheck.validate(profile, identifier, TEAMID, cloud: true, environment: "Production")
+      BunwayProfileCheck.validate(profile, identifier, TEAMID, cloud: true, push: true, environment: "Production")
     rescue StandardError => error
       UI.user_error!(error.message)
     end

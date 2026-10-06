@@ -24,6 +24,11 @@ run-name: Build and deliver the selected Bunway release platforms
         type: boolean
         required: true
         default: false
+      direct_only:
+        description: Export an encrypted ad-hoc package for Julien's registered iPhone and iPad without Store upload
+        type: boolean
+        required: true
+        default: false
       enable_cloudkit:
         description: Enable CloudKit on the existing TV identifier if needed during the readiness probe
         type: boolean
@@ -47,7 +52,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && (github.event_name == 'workflow_dispatch' || vars.BUNWAY_CAPABILITIES_READY == 'true') && inputs.readiness_only != true
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && (github.event_name == 'workflow_dispatch' || vars.BUNWAY_CAPABILITIES_READY == 'true') && inputs.readiness_only != true && inputs.direct_only != true
     runs-on: macos-26
     timeout-minutes: 90
     strategy:
@@ -227,7 +232,7 @@ jobs:
           rm -rf ${{ matrix.buildlog }}
 
   readiness:
-    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && github.event_name == 'workflow_dispatch' && inputs.readiness_only == true
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && github.event_name == 'workflow_dispatch' && inputs.readiness_only == true && inputs.direct_only != true
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -328,3 +333,166 @@ jobs:
       - name: Remove raw readiness diagnostics
         if: always()
         run: rm -f "$RUNNER_TEMP/bunway-tv-readiness.log" "$RUNNER_TEMP/bunway-tv-readiness-proof.json" "$RUNNER_TEMP/bunway-tv-readiness-diagnostics.tar.gz" BunwayTV-readiness.diagnostics.tar.gz.enc
+
+  direct:
+    name: Julien direct export
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && github.event_name == 'workflow_dispatch' && inputs.direct_only == true && inputs.readiness_only != true && inputs.platform == 'ios'
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - name: Confirm Julien release prerequisites without printing credentials
+        id: selected
+        env:
+          CONFIRMED: ${{ inputs.capabilities_ready == true }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          BUNWAY_JULIEN_DEVICE_UDIDS: ${{ secrets.BUNWAY_JULIEN_DEVICE_UDIDS }}
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json,os,re,sys
+          if os.environ.get('CONFIRMED') != 'true':
+              sys.exit('Verify Bunway capabilities, Production schema, and Julien device/profile readiness before confirming this build.')
+          source=os.environ.get('SOURCE_SHA','')
+          if not re.fullmatch(r'[0-9a-fA-F]{40}',source):
+              sys.exit('Select a full approved Bunway source commit SHA, not a branch name.')
+          try:
+              devices=json.loads(os.environ.get('BUNWAY_JULIEN_DEVICE_UDIDS',''))
+          except ValueError:
+              sys.exit('Configure the private Julien iPhone and iPad hardware record.')
+          if not isinstance(devices,dict) or set(devices) != {'iphone','ipad'} or not all(isinstance(d,str) and re.fullmatch(r'(?:[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}|[0-9A-Fa-f]{40})',d) for d in devices.values()) or len(set(devices.values())) != 2:
+              sys.exit('The private Julien record must contain two distinct registered hardware targets.')
+          if not re.fullmatch(r'[0-9a-fA-F]{64}',os.environ.get('BUNWAY_ARTIFACT_KEY','')):
+              sys.exit('BUNWAY_ARTIFACT_KEY must contain a fresh private 256-bit hexadecimal artifact key.')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+              output.write('source_sha='+source.lower()+'\n')
+          PY
+
+      - name: Select Xcode 26.2
+        run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+
+      - name: Checkout isolated delivery tools
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
+
+      - name: Checkout the approved Bunway source commit
+        uses: actions/checkout@v5
+        with:
+          repository: h00l1gvn/bunway-app
+          ref: ${{ steps.selected.outputs.source_sha }}
+          token: ${{ secrets.GH_PAT }}
+          path: BunwaySource
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require selected source to be merged into Bunway main
+        env:
+          SOURCE_SHA: ${{ steps.selected.outputs.source_sha }}
+        run: git -C BunwaySource merge-base --is-ancestor "$SOURCE_SHA" refs/remotes/origin/main
+
+      - name: Regenerate Bunway targets
+        run: python3 BunwaySource/apple/generate_project.py
+
+      - name: Install pinned delivery dependencies
+        run: bundle install
+
+      - name: Select Node 24 for standard authenticated artifact encryption
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Validate profile, signed-export and encryption checks
+        run: |
+          ruby fastlane/bunway/test_verify_profiles.rb
+          ruby fastlane/bunway/test_verify_exported_ipa.rb
+          node --test fastlane/bunway/test_artifact_crypto.cjs
+          ruby fastlane/bunway/test_julien_delivery.rb
+
+      - name: Build Julien's Production CloudKit ad-hoc IPA
+        id: julien_build
+        run: |
+          umask 077
+          if ! bundle exec fastlane ios build_BunwayJulien > "$RUNNER_TEMP/bunway-julien-build.log" 2>&1; then
+            echo "Bunway ad-hoc build failed. Check Apple capabilities, refreshed provisioning, and the approved source. Raw output was not printed; encrypted diagnostics will be preserved when available."
+            exit 1
+          fi
+          echo "Bunway ad-hoc build completed. Checking the signed export next."
+        env:
+          BUNWAY_CAPABILITIES_READY: "true"
+          BUNWAY_JULIEN_DEVICE_UDIDS: ${{ secrets.BUNWAY_JULIEN_DEVICE_UDIDS }}
+          TEAMID: ${{ secrets.TEAMID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+
+      - name: Verify actual signed phone, Watch and Widget before preserving anything
+        run: ruby fastlane/bunway/verify_julien_exported_ipa.rb BunwayJulien.ipa
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          BUNWAY_JULIEN_DEVICE_UDIDS: ${{ secrets.BUNWAY_JULIEN_DEVICE_UDIDS }}
+
+      - name: Bind the actual package to this reviewed source and delivery run
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,plistlib,zipfile
+          from pathlib import Path
+          os.umask(0o077)
+          ipa=Path('BunwayJulien.ipa')
+          with zipfile.ZipFile(ipa) as archive:
+              infos=[plistlib.loads(archive.read(name)) for name in archive.namelist() if name.startswith('Payload/') and (name.endswith('.app/Info.plist') or name.endswith('.appex/Info.plist'))]
+          records={i['CFBundleIdentifier']:{'version':str(i['CFBundleShortVersionString']),'build':str(i['CFBundleVersion'])} for i in infos}
+          if len(records)!=3 or len(infos)!=3 or len({(v['version'],v['build']) for v in records.values()})!=1:
+              raise SystemExit('The actual package companion coordinates must agree.')
+          manifest={'run_id':os.environ['GITHUB_RUN_ID'],'delivery_sha':os.environ['GITHUB_SHA'],'source_sha':os.environ['SOURCE_SHA'],'ipa_sha256':hashlib.sha256(ipa.read_bytes()).hexdigest(),'bundles':records}
+          Path('BunwayJulien.manifest.json').write_text(json.dumps(manifest,sort_keys=True)+'\n')
+          PY
+        env:
+          SOURCE_SHA: ${{ steps.selected.outputs.source_sha }}
+
+      - name: Encrypt the verified IPA with authenticated AES-256-GCM
+        run: |
+          node fastlane/bunway/artifact_crypto.cjs encrypt BunwayJulien.ipa BunwayJulien.ipa.enc
+          node fastlane/bunway/artifact_crypto.cjs encrypt BunwayJulien.manifest.json BunwayJulien.manifest.json.enc
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+
+      - name: Preserve only the encrypted IPA
+        uses: actions/upload-artifact@v6
+        with:
+          name: BunwayJulien-encrypted-${{ github.run_id }}
+          path: |
+            BunwayJulien.ipa.enc
+            BunwayJulien.manifest.json.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Encrypt failed-run diagnostics without printing them
+        id: encrypt_diagnostics
+        if: failure() && (steps.julien_build.outcome == 'failure' || steps.julien_build.outcome == 'success')
+        run: |
+          if [ -s "$RUNNER_TEMP/bunway-julien-build.log" ]; then
+            node fastlane/bunway/artifact_crypto.cjs encrypt "$RUNNER_TEMP/bunway-julien-build.log" BunwayJulien.build.log.enc
+            echo "preserved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The failed run produced no diagnostic log to preserve."
+          fi
+        env:
+          BUNWAY_ARTIFACT_KEY: ${{ secrets.BUNWAY_ARTIFACT_KEY }}
+
+      - name: Preserve only encrypted failure diagnostics
+        if: failure() && steps.encrypt_diagnostics.outputs.preserved == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: BunwayJulien-encrypted-diagnostics-${{ github.run_id }}
+          path: BunwayJulien.build.log.enc
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove plaintext package and private signing/build output
+        if: always()
+        run: |
+          rm -f BunwayJulien.ipa BunwayJulien.manifest.json "$RUNNER_TEMP/bunway-julien-build.log"
+          rm -rf buildlog-bunway-julien

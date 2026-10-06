@@ -13,7 +13,7 @@ class BunwayStoreWorkflowTests < Minitest::Test
   def step(id); steps.find { |entry| entry['id'] == id }; end
 
   def test_exact_repository_ref_and_nonbypassable_readiness
-    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && (github.event_name == 'workflow_dispatch' || vars.BUNWAY_CAPABILITIES_READY == 'true') && inputs.readiness_only != true", workflow.fetch('jobs').fetch('build')['if']
+    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && (github.event_name == 'workflow_dispatch' || vars.BUNWAY_CAPABILITIES_READY == 'true') && inputs.readiness_only != true && inputs.direct_only != true", workflow.fetch('jobs').fetch('build')['if']
     assert_equal ['bunway-release'], workflow.fetch('on').fetch('push').fetch('branches')
     assert_equal({'contents'=>'read'}, workflow['permissions'])
     assert_equal false, workflow.fetch('on').fetch('workflow_dispatch').fetch('inputs').fetch('capabilities_ready').fetch('default')

@@ -12,6 +12,7 @@ class BunwayTVExportTests < Minitest::Test
      'Entitlements' => {
        'application-identifier' => "LEGACY_PREFIX.#{BunwayTVExportCheck::IDENTIFIER}",
        'get-task-allow' => false,
+       'aps-environment' => 'production',
        'com.apple.developer.icloud-services' => ['CloudKit'],
        'com.apple.developer.icloud-container-identifiers' => [BunwayProfileCheck::CONTAINER],
        'com.apple.developer.icloud-container-environment' => ['Production']}}
@@ -92,6 +93,23 @@ class BunwayTVExportTests < Minitest::Test
       value = signed; value[key] = invalid
       assert_raises(BunwayTVExportCheck::Invalid) { check_signed(value) }
     end
+  end
+
+  def test_tv_cloudkit_requires_literal_production_push_in_profile_and_signature
+    [nil, 'development', '*', ['production']].each do |grant|
+      authorized = profile
+      grant.nil? ? authorized['Entitlements'].delete('aps-environment') : authorized['Entitlements']['aps-environment'] = grant
+      assert_match(/Push Notifications are not Production/, assert_raises(BunwayTVExportCheck::Invalid) {
+        BunwayTVExportCheck.validate_profile(authorized, TEAM)
+      }.message)
+      actual = signed
+      grant.nil? ? actual.delete('aps-environment') : actual['aps-environment'] = grant
+      assert_match(/Push Notifications must be Production/, assert_raises(BunwayTVExportCheck::Invalid) {
+        check_signed(actual)
+      }.message)
+    end
+    assert BunwayTVExportCheck.validate_profile(profile, TEAM)
+    assert check_signed(signed)
   end
 
   def test_legacy_prefix_allowed_only_when_exact_profile_matches
@@ -192,6 +210,16 @@ class BunwayTVExportTests < Minitest::Test
     with_ipa(signed_entitlements: wrong) do |path, phase|
       next unless phase == :verify
       assert_match(/CloudKit must be Production/, assert_raises(BunwayTVExportCheck::Invalid) {
+        BunwayTVExportCheck.verify(path, TEAM, VERSION, BUILD)
+      }.message)
+    end
+  end
+
+  def test_cloudkit_package_with_missing_signed_push_rejected_before_upload
+    actual = signed; actual.delete('aps-environment')
+    with_ipa(signed_entitlements: actual) do |path, phase|
+      next unless phase == :verify
+      assert_match(/Push Notifications must be Production/, assert_raises(BunwayTVExportCheck::Invalid) {
         BunwayTVExportCheck.verify(path, TEAM, VERSION, BUILD)
       }.message)
     end

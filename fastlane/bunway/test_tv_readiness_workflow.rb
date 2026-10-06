@@ -15,7 +15,7 @@ class BunwayTVReadinessWorkflowTests < Minitest::Test
     assert_equal ['workflow_dispatch','push'],workflow.fetch('on').keys
     assert_equal false,workflow.fetch('on').fetch('workflow_dispatch').fetch('inputs').fetch('readiness_only').fetch('default')
     assert_equal false,workflow.fetch('on').fetch('workflow_dispatch').fetch('inputs').fetch('enable_cloudkit').fetch('default')
-    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && github.event_name == 'workflow_dispatch' && inputs.readiness_only == true",workflow.fetch('jobs').fetch('readiness').fetch('if')
+    assert_equal "github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/bunway-release' && github.event_name == 'workflow_dispatch' && inputs.readiness_only == true && inputs.direct_only != true",workflow.fetch('jobs').fetch('readiness').fetch('if')
     assert_includes workflow.fetch('jobs').fetch('build').fetch('if'),'inputs.readiness_only != true'
     assert_equal({'contents'=>'read'},workflow['permissions'])
     assert_equal({'group'=>'bunway-store-delivery','cancel-in-progress'=>false},workflow['concurrency'])

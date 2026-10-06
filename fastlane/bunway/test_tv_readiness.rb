@@ -51,7 +51,7 @@ class BunwayTVReadinessTests < Minitest::Test
   def profile
     {'TeamIdentifier'=>[TEAM], 'ExpirationDate'=>(Time.now.utc + 86400).iso8601,
      'Entitlements'=>{'application-identifier'=>"LEGACY_PREFIX.#{BunwayTVReadiness::IDENTIFIER}",
-      'get-task-allow'=>false, 'com.apple.developer.icloud-services'=>['CloudKit'],
+      'get-task-allow'=>false, 'aps-environment'=>'production', 'com.apple.developer.icloud-services'=>['CloudKit'],
       'com.apple.developer.icloud-container-identifiers'=>[BunwayProfileCheck::CONTAINER],
       'com.apple.developer.icloud-container-environment'=>['Production']}}
   end
@@ -131,6 +131,8 @@ class BunwayTVReadinessTests < Minitest::Test
       ->(value) { value['Entitlements']['com.apple.developer.icloud-services']=[] },
       ->(value) { value['Entitlements']['com.apple.developer.icloud-container-identifiers']=['other.container'] },
       ->(value) { value['Entitlements']['com.apple.developer.icloud-container-environment']=['Development'] },
+      ->(value) { value['Entitlements'].delete('aps-environment') },
+      ->(value) { value['Entitlements']['aps-environment']='development' },
       ->(value) { value['ProvisionedDevices']=['synthetic-device'] },
       ->(value) { value['ProvisionsAllDevices']=true }
     ]

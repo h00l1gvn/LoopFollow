@@ -8,7 +8,7 @@ module BunwayTVExportCheck
 
   def self.validate_profile(profile, team)
     begin
-      BunwayProfileCheck.validate(profile, IDENTIFIER, team, cloud: true, environment: 'Production')
+      BunwayProfileCheck.validate(profile, IDENTIFIER, team, cloud: true, push: true, environment: 'Production')
     rescue RuntimeError => error
       raise Invalid, error.message
     end
@@ -28,6 +28,7 @@ module BunwayTVExportCheck
     failures << 'missing CloudKit service' unless Array(entitlements['com.apple.developer.icloud-services']).include?('CloudKit')
     failures << 'wrong CloudKit container' unless Array(entitlements['com.apple.developer.icloud-container-identifiers']) == [BunwayProfileCheck::CONTAINER]
     failures << 'CloudKit must be Production' unless entitlements['com.apple.developer.icloud-container-environment'] == 'Production'
+    failures << 'Push Notifications must be Production' unless entitlements['aps-environment'] == 'production'
     raise Invalid, "Bunway TV: #{failures.join('; ')}" unless failures.empty?
     true
   end
@@ -89,7 +90,7 @@ end
 if $PROGRAM_NAME == __FILE__
   begin
     BunwayTVExportCheck.verify(ARGV.fetch(0), ENV['TEAMID'], ARGV.fetch(1), ARGV.fetch(2))
-    puts 'Verified the exact signed Bunway TV Store export and Production CloudKit.'
+    puts 'Verified the exact signed Bunway TV Store export, Production CloudKit and push permission.'
   rescue BunwayTVExportCheck::Invalid => error
     warn "Bunway TV export verification: #{error.message}"; exit 1
   rescue StandardError
