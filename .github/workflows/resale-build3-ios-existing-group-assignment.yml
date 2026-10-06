@@ -1,0 +1,60 @@
+name: Re$Burrow exact build3 existing-group assignment
+on:
+  push:
+    branches: [codex/resale-burrow-build3-ios-existing-group-assignment]
+    paths: [.github/workflows/resale-build3-ios-existing-group-assignment.yml, Scripts/resale-build3-ios-assign/**]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-build3-ios-existing-group-assignment
+  cancel-in-progress: false
+jobs:
+  assign:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'h00l1gvn/LoopFollow' && github.actor == 'h00l1gvn' && github.ref == 'refs/heads/codex/resale-burrow-build3-ios-existing-group-assignment' && github.run_attempt == 1
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install unchanged pinned JWT dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale-build3-ios-assign/audit-requirements.txt
+      - name: Exercise additive assignment guards without credentials
+        run: |
+          python -m unittest discover -s Scripts/resale-build3-ios-assign -p test_assign_ios_build3.py
+      - name: Validate frozen exact-build scope before accessing credentials
+        run: |
+          python -c 'import json,sys; sys.path.insert(0,"Scripts/resale-build3-ios-assign"); from assign_ios_build3 import scope_gate; scope_gate(json.load(open("Scripts/resale-build3-ios-assign/scope.json")))'
+      - name: Assign one fresh ready build to the existing group once
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/build3-ios-assignment-private"
+          python Scripts/resale-build3-ios-assign/assign_ios_build3.py --execute-assignment-once --scope Scripts/resale-build3-ios-assign/scope.json --intent "$RUNNER_TEMP/build3-ios-assignment-private/intent.json" --report "$RUNNER_TEMP/build3-ios-assignment-private/result.json" > "$RUNNER_TEMP/build3-ios-assignment-private/assignment-private.log" 2>&1
+      - name: Protect private intent and minimal readback on every outcome
+        if: always()
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/build3-ios-assignment-private" "$RUNNER_TEMP/build3-ios-assignment-encrypted"
+          tar -czf "$RUNNER_TEMP/build3-ios-assignment.tar.gz" -C "$RUNNER_TEMP" build3-ios-assignment-private
+          node Scripts/resale-build3-ios-assign/protect_resale_artifact.cjs protect "$RUNNER_TEMP/build3-ios-assignment.tar.gz" "$RUNNER_TEMP/build3-ios-assignment-encrypted/assignment.gcm" "$RUNNER_TEMP/build3-ios-assignment-encrypted/assignment-envelope.json" Scripts/resale-build3-ios-assign/resale-recipient-public.pem Scripts/resale-build3-ios-assign/scope.json ios "$GITHUB_RUN_ID"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: ReBurrow-build3-ios-existing-group-assignment-${{ github.run_id }}
+          path: ${{ runner.temp }}/build3-ios-assignment-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Clean only the private assignment workspace
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/build3-ios-assignment-private" "$RUNNER_TEMP/build3-ios-assignment.tar.gz"
