@@ -1,0 +1,62 @@
+{
+  "schema": "ResaleBurrow-build2-three-push-profile-scope-1",
+  "team": "N8K8G6QA36",
+  "group": "group.com.julienbell.ResaleBurrow",
+  "targets": [
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow",
+      "native_bundle_resource_id": "BRCY926N89",
+      "target": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_STORE",
+      "profile_name": "ResaleBurrow Build2 AppStore ResaleBurrowIOS"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.watch",
+      "native_bundle_resource_id": "2P34357G7A",
+      "target": "ResaleBurrowWatch",
+      "profile_type": "IOS_APP_STORE",
+      "profile_name": "ResaleBurrow Build2 AppStore ResaleBurrowWatch"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.mac",
+      "native_bundle_resource_id": "63ASLSXV3M",
+      "target": "ResaleBurrowMac",
+      "profile_type": "MAC_APP_STORE",
+      "profile_name": "ResaleBurrow Build2 AppStore ResaleBurrowMac"
+    }
+  ],
+  "certificate_id": "9K5USY2222",
+  "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772",
+  "basis_run_id": 37505482996,
+  "basis_report_sha256": "f24a06c2e765e2b0a42b3cb24deb3c1532f55ceeef25d1d841b32ac028aeb705",
+  "version": "0.1.0",
+  "build": "2",
+  "source_frozen": false,
+  "operations_allowed": [
+    "POST /v1/bundleIdCapabilities exact three PUSH_NOTIFICATIONS only",
+    "POST /v1/profiles exact three unique Build2 Store profiles existing certificate only"
+  ],
+  "forbidden": [
+    "new certificate",
+    "delete/revoke",
+    "unrelated bundle/capability/profile",
+    "Match overwrite",
+    "keychain",
+    "app build/upload",
+    "device"
+  ],
+  "official_sources": [
+    {
+      "url": "https://developer.apple.com/documentation/appstoreconnectapi/post-v1-bundleidcapabilities",
+      "observed_at": "2026-10-06T17:45:31.043224+00:00"
+    },
+    {
+      "url": "https://developer.apple.com/documentation/appstoreconnectapi/bundleidcapabilitycreaterequest/data-data.dictionary/attributes-data.dictionary",
+      "observed_at": "2026-10-06T17:45:31.043809+00:00"
+    },
+    {
+      "url": "https://developer.apple.com/documentation/appstoreconnectapi/bundleidcapabilitycreaterequest/data-data.dictionary/relationships-data.dictionary/bundleid-data.dictionary/data-data.dictionary",
+      "observed_at": "2026-10-06T17:45:31.043828+00:00"
+    }
+  ]
+}
