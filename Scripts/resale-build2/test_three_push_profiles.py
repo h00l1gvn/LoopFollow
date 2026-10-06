@@ -40,6 +40,12 @@ class Guards(unittest.TestCase):
         self.assertEqual(set(result['exact_push_receiving_bundle_ids']),set(p.EXACT));self.assertFalse(result['app_built_or_uploaded']);self.assertFalse(result['old_profiles_deleted_or_overwritten'])
         for r in result['profiles']:
             f=self.root/'profiles'/r['path'];self.assertEqual(f.stat().st_mode&0o777,0o600);self.assertEqual(p.hashlib.sha256(f.read_bytes()).hexdigest(),r['sha256']);self.assertTrue(r['production_push_grant_verified'])
+    def test_creation_response_state_is_not_reused_as_authoritative_get_state(self):
+        client=Fake();original=client.create_profile
+        def create(row):
+            resource=original(row);post=copy.deepcopy(resource);post['attributes']['profileState']='INVALID';return post
+        client.create_profile=create;result=self.run_prepared(client)
+        self.assertTrue(result['complete']);self.assertTrue(all(r['native_readback_verified'] for r in result['profiles']));self.assertEqual(len(client.post_calls),6)
     def test_current_exact_names_reuse_without_any_posts(self):
         client=Fake(True);self.run_prepared(client);self.assertEqual(client.post_calls,[])
     def test_unknown_capability_post_stops_once_keeps_intent(self):

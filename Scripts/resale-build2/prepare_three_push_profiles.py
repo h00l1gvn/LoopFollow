@@ -90,10 +90,10 @@ def prepare(client,scope,output,now=None,decoder=audit.decode_profile):
         named=profile_rows(client,row);profile_action='reused'
         if not named:
             write(output/(prefix+'-profile-intent.json'),{'recorded_at':now.isoformat(),'action':'create_exact_build2_store_profile_existing_cert_only','body':profile_request(row),'unknown_outcome_requires_review':True})
-            created=client.create_profile(row);post,post_raw=checked_profile(created,row,cert,now,decoder);named=profile_rows(client,row)
+            created=client.create_profile(row);c.require(isinstance(created.get('id'),str) and re.fullmatch('[A-Za-z0-9_-]{1,80}',created['id']),'created_profile_resource_id_missing_stop');named=profile_rows(client,row)
             c.require(len(named)==1 and named[0].get('id')==created.get('id'),'profile_creation_readback_missing_or_changed_stop');profile_action='created'
         result,raw=checked_profile(named[0],row,cert,now,decoder)
-        if profile_action=='created':c.require(raw==post_raw and result['uuid']==post['uuid'],'profile_creation_readback_content_changed')
+        if profile_action=='created' and created.get('attributes',{}).get('profileContent') is not None:c.require(raw==base64.b64decode(created['attributes']['profileContent'],validate=True),'profile_creation_readback_content_changed')
         extension='.provisionprofile' if row['profile_type']=='MAC_APP_STORE' else '.mobileprovision';path=output/(row['target']+extension)
         fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
         with os.fdopen(fd,'wb') as h:h.write(raw)
