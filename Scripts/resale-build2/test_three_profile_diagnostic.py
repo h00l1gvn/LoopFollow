@@ -7,6 +7,15 @@ class ReadOnly(unittest.TestCase):
   f=Fake(True)
   with patch.object(d.a,'certificate',return_value=CERT),patch.object(d.api,'decode_profile',side_effect=f.decode):v=d.run(f,SCOPE)
   self.assertEqual(len(v['targets']),3);self.assertEqual(v['account_mutations'],0);self.assertEqual(f.post_calls,[]);self.assertTrue(all(x['evidence']['reusable_for_build2'] for x in v['targets']))
+ def test_undecodable_profile_is_reported_without_aborting_or_mutating(self):
+  f=Fake(True)
+  with patch.object(d.a,'certificate',return_value=CERT),patch.object(d.api,'decode_profile',return_value=None):v=d.run(f,SCOPE)
+  self.assertEqual(len(v['targets']),3);self.assertTrue(all(x['profile_content_decoded'] is False for x in v['targets']));self.assertEqual(f.post_calls,[])
+ def test_invalid_profile_evidence_is_reported_without_aborting_or_mutating(self):
+  f=Fake(True)
+  for profile in f.cms.values():profile.pop('UUID')
+  with patch.object(d.a,'certificate',return_value=CERT),patch.object(d.api,'decode_profile',side_effect=f.decode):v=d.run(f,SCOPE)
+  self.assertTrue(all(x['evidence_error']=='profile_uuid_invalid' for x in v['targets']));self.assertEqual(f.post_calls,[])
  def test_metadata_single_profile_route_is_refused_before_network(self):
   from urllib.parse import urlparse
   with self.assertRaises(d.api.AuditError):d.api.validate_metadata_path('https://api.appstoreconnect.apple.com',urlparse('https://api.appstoreconnect.apple.com/v1/profiles/SYNTHETIC'))
