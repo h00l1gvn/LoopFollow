@@ -34,6 +34,8 @@ MANIFEST_NAME='signed-export-cache-manifest.json'
 SOURCE='1162d8a1f4fdda1c2678220c9102f9c03ab48c33'
 DEPENDENCIES={'Gemfile':'c4d7c24a57bd57e7b62143b3af29af6dfc42e407425685ae8b65464e51d91b1f','Gemfile.lock':'8c21e506e0687cc9e3f6cd02877d5d4f679ab82ffaaec9810c21b7312807625b'}
 RECIPIENT='62d6dc6cd0253c7d427f63fbadd9953247a6312146df856689955371cd3e6358'
+TV_JOB_MODE='completed_successful_tvos_job'
+PRESERVED_IOS_MANIFEST={'asset_id':'615066957','name':'signed-export-cache-manifest-ios-0a0330c9077d.json','bytes':1495,'sha256':'0a0330c9077d35b56bdeeb87c03db2052603a0ff51dc4f3cf83b04eebf31551a'}
 
 class Invalid(ValueError): pass
 def require(value,code):
@@ -86,7 +88,7 @@ class GitHub:
         if p.path==base:require(not query,'github_get_outside_scope')
         elif p.path==base+'/releases' or re.fullmatch(re.escape(base)+r'/releases/[1-9][0-9]*/assets',p.path):
             require(set(query)=={'per_page','page'} and query['per_page']=='100' and query['page'] in {str(n) for n in range(1,11)},'github_collection_query_outside_scope')
-        elif re.fullmatch(re.escape(base)+r'/releases/[1-9][0-9]*',p.path) or re.fullmatch('/repos/'+re.escape(TOOLING_REPO)+r'/actions/runs/[1-9][0-9]*',p.path):require(not query,'github_get_outside_scope')
+        elif re.fullmatch(re.escape(base)+r'/releases/[1-9][0-9]*',p.path) or re.fullmatch('/repos/'+re.escape(TOOLING_REPO)+r'/actions/(runs|jobs)/[1-9][0-9]*',p.path):require(not query,'github_get_outside_scope')
         else:raise Invalid('github_get_outside_scope')
         require(not p.scheme and not p.netloc and not p.fragment,'github_get_outside_scope')
         return self.http.json('https://api.github.com'+path,token=self.token)
@@ -165,9 +167,14 @@ class Apple:
         result={'authenticated_get_only':True,'complete':True,'asc_id':ident,'bundle_id':app['bundle_id'],'platform':app['platform'],'checked_at':stamp(),'unknown_previous_upload':False,'pagination_complete':True,'builds':builds,'build_uploads':uploads}
         plan.collision_precheck(result,family);return result
 
+def validate_preserved_manifests(value):
+    require(isinstance(value,list) and (value==[] or value==[PRESERVED_IOS_MANIFEST]),'preserved_manifest_outside_exact_history_scope')
+    return value
+
 def validate_cache_manifest(value,*,source,family,delivery,run_id):
     require(isinstance(value,dict) and value.get('schema')=='ResaleBurrow-signed-cache-2' and value.get('complete') is True,'cache_manifest_schema_invalid')
     require(value.get('repository')==REPO and value.get('source_sha')==source==SOURCE,'cache_source_pin_mismatch')
+    validate_preserved_manifests(value.get('preserved_manifests',[]))
     approved=value.get('approved_families');rows=value.get('exports')
     require(isinstance(approved,list) and approved and len(set(approved))==len(approved) and set(approved)<=set(plan.APPS) and family in approved,'approved_family_subset_required')
     require(isinstance(rows,list) and len(rows)==len(approved) and all(isinstance(r,dict) for r in rows) and {r.get('family') for r in rows}==set(approved),'exact_approved_export_subset_required')
@@ -178,29 +185,61 @@ def validate_cache_manifest(value,*,source,family,delivery,run_id):
         require(row.get('name')==name and numeric(row.get('asset_id')) and type(row.get('bytes')) is int and 0<row['bytes']<=MAX_PACKAGE and re.fullmatch(r'[a-f0-9]{64}',row.get('sha256','')),'cache_asset_pin_invalid')
         ci=row.get('export_ci',{});recovery=row.get('recovery',{})
         require(ci.get('repository')==TOOLING_REPO and numeric(ci.get('run_id')) and re.fullmatch(r'[a-f0-9]{40}',ci.get('head_sha','')) and ci.get('status')=='completed' and ci.get('conclusion') in ('success','failure') and ci.get('event') in ('push','workflow_dispatch'),'per_family_actual_export_provenance_required')
+        mode=ci.get('provenance_mode')
+        require(mode in (None,TV_JOB_MODE),'export_provenance_mode_unknown')
+        if mode==TV_JOB_MODE:
+            job=ci.get('successful_job')
+            require(row['family']=='tvos' and type(ci.get('run_attempt')) is int and ci['run_attempt']>0 and isinstance(job,dict),'tv_successful_job_scope_required')
+            require(numeric(job.get('id')) and str(job.get('run_id'))==str(ci['run_id']) and job.get('head_sha')==ci['head_sha'] and job.get('run_attempt')==ci['run_attempt'] and job.get('name')=='export (tvos)' and job.get('status')=='completed' and job.get('conclusion')=='success','tv_successful_job_pins_required')
+            require('ci_failure_stage' not in recovery and 'validation_failure_resolved_locally' not in recovery,'tv_successful_job_must_not_claim_family_validation_failure')
+        else:require('successful_job' not in ci and 'run_attempt' not in ci,'undeclared_job_provenance_forbidden')
         require(recovery.get('authenticated_recovery_verified') is True and recovery.get('archive_command_succeeded') is True and recovery.get('export_command_succeeded') is True and recovery.get('signed_local_validation_passed') is True and recovery.get('export_sha256')==row['sha256'],'authenticated_export_recovery_required')
         for k in ('recovery_receipt_sha256','local_validation_receipt_sha256'):
             require(re.fullmatch(r'[a-f0-9]{64}',recovery.get(k,'')),'pinned_recovery_and_validation_receipts_required')
-        if ci['conclusion']=='failure':require(recovery.get('ci_failure_stage')=='post_export_validation' and recovery.get('validation_failure_resolved_locally') is True,'failed_export_run_not_explained_by_verified_recovery')
+        if ci['conclusion']=='failure' and mode is None:require(recovery.get('ci_failure_stage')=='post_export_validation' and recovery.get('validation_failure_resolved_locally') is True,'failed_export_run_not_explained_by_verified_recovery')
     require(len({str(r['asset_id']) for r in rows})==len(rows),'cache_asset_ids_not_unique')
     selected=next(r for r in rows if r['family']==family)
     require(selected['export_ci']['head_sha']==delivery and str(selected['export_ci']['run_id'])==str(run_id),'selected_family_export_pin_mismatch')
     return {r['family']:r for r in rows}
 
-def verify_export_run(run,row):
+def verify_export_run(run,row,job=None):
     ci=row['export_ci']
     require(isinstance(run,dict) and str(run.get('id'))==str(ci['run_id']) and run.get('head_sha')==ci['head_sha'] and run.get('status')==ci['status'] and run.get('conclusion')==ci['conclusion'] and run.get('event')==ci['event'],'actual_family_export_run_not_verified')
+    result={'run_id':str(run['id']),'head_sha':run['head_sha'],'status':run['status'],'conclusion':run['conclusion'],'event':run['event'],'authenticated_metadata_get':True}
+    if ci.get('provenance_mode')==TV_JOB_MODE:
+        expected=ci['successful_job']
+        require(row['family']=='tvos' and run.get('run_attempt')==ci['run_attempt'] and isinstance(job,dict),'actual_tv_successful_job_not_verified')
+        require(str(job.get('id'))==str(expected['id']) and str(job.get('run_id'))==str(run['id']) and job.get('run_attempt')==run['run_attempt'] and job.get('head_sha')==run['head_sha'] and job.get('name')==expected['name']=='export (tvos)' and job.get('status')==expected['status']=='completed' and job.get('conclusion')==expected['conclusion']=='success','actual_tv_successful_job_not_verified')
+        result.update({'provenance_mode':TV_JOB_MODE,'run_attempt':run['run_attempt'],'successful_job':{k:job[k] for k in ('id','run_id','run_attempt','head_sha','name','status','conclusion')}})
+    else:require(job is None,'undeclared_actual_job_provenance_forbidden')
+    return result
 
-def verify_assets(assets,manifest_asset_id,manifest_bytes,rows):
+def read_export_provenance(github,row):
+    ci=row['export_ci']
+    run=github.get('/repos/'+TOOLING_REPO+'/actions/runs/'+str(ci['run_id']))
+    job=github.get('/repos/'+TOOLING_REPO+'/actions/jobs/'+str(ci['successful_job']['id'])) if ci.get('provenance_mode')==TV_JOB_MODE else None
+    return verify_export_run(run,row,job)
+
+def verify_assets(assets,manifest_asset_id,manifest_bytes,rows,preserved=()):
+    preserved=validate_preserved_manifests(list(preserved))
     expected={str(manifest_asset_id):(MANIFEST_NAME,manifest_bytes)}
     expected.update({str(r['asset_id']):(r['name'],r['bytes']) for r in rows.values()})
-    require(len(expected)==1+len(rows),'cache_manifest_asset_conflict')
+    expected.update({r['asset_id']:(r['name'],r['bytes']) for r in preserved})
+    require(len(expected)==1+len(rows)+len(preserved),'cache_manifest_asset_conflict')
     for ident,(name,count) in expected.items():
         found=[r for r in assets if str(r.get('id'))==ident]
-        require(len(found)==1 and found[0].get('name')==name and found[0].get('state')=='uploaded' and found[0].get('size')==count,'exact_private_release_asset_not_verified')
+        require(len(found)==1 and found[0].get('name')==name and found[0].get('state')=='uploaded' and found[0].get('size')==count and sum(r.get('name')==name for r in assets)==1,'exact_private_release_asset_not_verified')
     allowed=set(n for n,_ in expected.values())
     # Never turn this cache into an archive, key, profile or diagnostic store.
     require(all(r.get('name') in allowed or re.fullmatch(r'upload-(intent|result)-(ios|macos|tvos)-0[.]1[.]0-1[.]json',r.get('name','')) for r in assets),'unexpected_private_cache_asset')
+
+def read_preserved_manifests(github,preserved):
+    result=[]
+    for row in validate_preserved_manifests(list(preserved)):
+        raw=github.download_asset(row['asset_id'],row['sha256'],row['bytes'])
+        require(len(raw)==row['bytes'] and sha(raw)==row['sha256'],'preserved_manifest_hash_readback_failed')
+        result.append({**row,'hash_readback_verified':True,'upload_input':False})
+    return result
 
 def strict_revalidate(path,family,work,expected_sha,source):
     """Reuse the frozen platform-tool validator on exported bytes only."""
@@ -297,17 +336,18 @@ def main(argv=None):
     require(work.is_relative_to(runner) and not work.exists(),'new_ephemeral_private_work_required');work.mkdir(mode=0o700,parents=True)
     github=GitHub(os.environ.get('GH_PAT',''));require(bool(github.token),'existing_github_ci_credential_missing')
     assets=github.verify_private_release(a.release_id)
-    manifest=github.download_asset(a.manifest_asset_id,a.manifest_sha256,int(a.manifest_bytes));save(work/'cache-manifest-private.json',json.loads(manifest))
-    rows=validate_cache_manifest(json.loads(manifest),source=a.source,family=a.family,delivery=a.export_delivery,run_id=a.export_run)
-    verify_assets(assets,a.manifest_asset_id,int(a.manifest_bytes),rows)
-    run=github.get('/repos/'+TOOLING_REPO+'/actions/runs/'+a.export_run)
-    verify_export_run(run,rows[a.family])
+    manifest=github.download_asset(a.manifest_asset_id,a.manifest_sha256,int(a.manifest_bytes));manifest_value=json.loads(manifest);save(work/'cache-manifest-private.json',manifest_value)
+    rows=validate_cache_manifest(manifest_value,source=a.source,family=a.family,delivery=a.export_delivery,run_id=a.export_run)
+    preserved=validate_preserved_manifests(manifest_value.get('preserved_manifests',[]))
+    verify_assets(assets,a.manifest_asset_id,int(a.manifest_bytes),rows,preserved)
+    history=read_preserved_manifests(github,preserved);save(work/'preserved-manifests-private.json',history)
+    provenance=read_export_provenance(github,rows[a.family]);save(work/'export-provenance-private.json',provenance)
     row=rows[a.family];raw=github.download_asset(row['asset_id'],row['sha256'],row['bytes']);path=work/row['name'];path.write_bytes(raw);path.chmod(0o600);del raw
     validation=strict_revalidate(path,a.family,work,row['sha256'],a.source);save(work/'strict-validation-private.json',validation)
     verified=plan.validate_export({'family':a.family,'distribution':'app-store','version':'0.1.0','build':'1','source_sha':a.source,'delivery_sha':a.export_delivery,'authenticated_recovery_verified':True,'path':str(path),'sha256':row['sha256'],'validation':validation},a.source,a.export_delivery)
     apple=Apple(apple_token(os.environ))
     result=execute_batch_stage(github,apple,verified,a.release_id,work,uploader=lambda row,work:fastlane_once(row,work,tooling),source=a.source,delivery=a.export_delivery,execute=a.execute_reviewed_upload)
-    save(work/'final-private.json',{'status':result['status'],'family':a.family,'source_sha':a.source,'export_delivery_sha':a.export_delivery,'cache_manifest_sha256':a.manifest_sha256,'package_sha256':row['sha256'],'result':result,'raw_diagnostics_private':True,'rebuilds':0,'resigns':0})
+    save(work/'final-private.json',{'status':result['status'],'family':a.family,'source_sha':a.source,'export_delivery_sha':a.export_delivery,'cache_manifest_sha256':a.manifest_sha256,'package_sha256':row['sha256'],'preserved_manifests':history,'export_provenance':provenance,'result':result,'raw_diagnostics_private':True,'rebuilds':0,'resigns':0})
     print('Cached upload stage completed; exact package recorded privately. Processing and devices remain separate.')
 
 if __name__=='__main__':

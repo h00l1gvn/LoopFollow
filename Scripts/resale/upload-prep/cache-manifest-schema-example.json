@@ -4,7 +4,8 @@
   "repository": "h00l1gvn/resale-burrow-native",
   "source_sha": "1162d8a1f4fdda1c2678220c9102f9c03ab48c33",
   "approved_families": [
-    "ios"
+    "ios",
+    "tvos"
   ],
   "exports": [
     {
@@ -37,6 +38,54 @@
         "ci_failure_stage": "post_export_validation",
         "validation_failure_resolved_locally": true
       }
+    },
+    {
+      "family": "tvos",
+      "asc_id": "6819601651",
+      "bundle_id": "com.julienbell.ResaleBurrow.tv",
+      "version": "0.1.0",
+      "build": "1",
+      "distribution": "app-store",
+      "name": "ResaleBurrow-tvos-0.1.0-1.ipa",
+      "asset_id": "REPLACE_ACTUAL_PRIVATE_TV_ASSET_ID",
+      "bytes": "REPLACE_ACTUAL_TV_BYTE_COUNT_INTEGER",
+      "sha256": "REPLACE_ACTUAL_VALIDATED_TV_IPA_SHA256",
+      "export_ci": {
+        "repository": "h00l1gvn/LoopFollow",
+        "run_id": "37442839374",
+        "head_sha": "2ba103caea392fe96f6a7e1fca05472cabffaba0",
+        "status": "completed",
+        "conclusion": "failure",
+        "event": "push",
+        "provenance_mode": "completed_successful_tvos_job",
+        "run_attempt": 1,
+        "successful_job": {
+          "id": "112200481529",
+          "run_id": "37442839374",
+          "run_attempt": 1,
+          "head_sha": "2ba103caea392fe96f6a7e1fca05472cabffaba0",
+          "name": "export (tvos)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      },
+      "recovery": {
+        "authenticated_recovery_verified": true,
+        "archive_command_succeeded": true,
+        "export_command_succeeded": true,
+        "signed_local_validation_passed": true,
+        "export_sha256": "REPLACE_SAME_VALIDATED_TV_IPA_SHA256",
+        "recovery_receipt_sha256": "REPLACE_ACTUAL_AUTHENTICATED_TV_RECOVERY_RECEIPT_SHA256",
+        "local_validation_receipt_sha256": "REPLACE_ACTUAL_TV_LOCAL_VALIDATION_RECEIPT_SHA256"
+      }
+    }
+  ],
+  "preserved_manifests": [
+    {
+      "asset_id": "615066957",
+      "name": "signed-export-cache-manifest-ios-0a0330c9077d.json",
+      "bytes": 1495,
+      "sha256": "0a0330c9077d35b56bdeeb87c03db2052603a0ff51dc4f3cf83b04eebf31551a"
     }
   ]
 }

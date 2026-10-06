@@ -57,6 +57,18 @@ def manifest(families=('ios',)):
     return {'schema':'ResaleBurrow-signed-cache-2','complete':True,'repository':c.REPO,'source_sha':c.SOURCE,'approved_families':list(families),'exports':[row(f) for f in families]}
 def validate(m,family='ios'):
     return c.validate_cache_manifest(m,source=c.SOURCE,family=family,delivery=row(family)['export_ci']['head_sha'],run_id=row(family)['export_ci']['run_id'])
+def tv_job_row():
+    r=row('tvos');ci=r['export_ci']
+    ci.update({'provenance_mode':c.TV_JOB_MODE,'run_attempt':1,'successful_job':{'id':'1234','run_id':ci['run_id'],'run_attempt':1,'head_sha':ci['head_sha'],'name':'export (tvos)','status':'completed','conclusion':'success'}})
+    del r['recovery']['ci_failure_stage'];del r['recovery']['validation_failure_resolved_locally']
+    return r
+def tv_job_manifest():
+    m=manifest(('tvos',));m['exports']=[tv_job_row()];return m
+def actual_tv_run(r=None):
+    ci=(r or tv_job_row())['export_ci']
+    return {'id':int(ci['run_id']),**{k:ci[k] for k in ('head_sha','status','conclusion','event','run_attempt')}}
+def actual_tv_job(r=None):
+    job=copy.deepcopy((r or tv_job_row())['export_ci']['successful_job']);job['id']=int(job['id']);job['run_id']=int(job['run_id']);return job
 class Tests(unittest.TestCase):
     def test_ios_subset_honest_failed_ci_local_pass(self):self.assertEqual(set(validate(manifest())),{'ios'})
     def test_distinct_three_family_delivery_runs(self):self.assertEqual(len(validate(manifest(tuple(c.plan.APPS)))),3)
@@ -82,6 +94,91 @@ class Tests(unittest.TestCase):
     def test_ci_exact_actual_conclusion_required(self):
         r=row();v={'id':r['export_ci']['run_id'],**r['export_ci']};v['conclusion']='success'
         with self.assertRaisesRegex(c.Invalid,'actual_family'):c.verify_export_run(v,r)
+    def test_tv_successful_job_preserves_failed_whole_run(self):
+        r=validate(tv_job_manifest(),'tvos')['tvos'];proof=c.verify_export_run(actual_tv_run(r),r,actual_tv_job(r))
+        self.assertEqual(proof['conclusion'],'failure');self.assertEqual(proof['successful_job']['conclusion'],'success')
+        self.assertNotIn('ci_failure_stage',r['recovery']);self.assertNotIn('validation_failure_resolved_locally',r['recovery'])
+    def test_tv_mode_cannot_relax_another_family(self):
+        m=manifest();m['exports'][0]['export_ci']=tv_job_row()['export_ci']
+        with self.assertRaisesRegex(c.Invalid,'tv_successful_job_scope'):validate(m)
+    def test_tv_mode_rejects_missing_or_wrong_job_pins(self):
+        for key,value in [('id','bad'),('run_id','999'),('run_attempt',2),('head_sha','f'*40),('name','export (macos)'),('status','in_progress'),('conclusion','failure')]:
+            with self.subTest(field=key):
+                m=tv_job_manifest();m['exports'][0]['export_ci']['successful_job'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'tv_successful_job_pins'):validate(m,'tvos')
+        m=tv_job_manifest();del m['exports'][0]['export_ci']['successful_job']
+        with self.assertRaisesRegex(c.Invalid,'tv_successful_job_scope'):validate(m,'tvos')
+    def test_tv_mode_rejects_misleading_family_failure_flags(self):
+        for key,value in [('ci_failure_stage','post_export_validation'),('validation_failure_resolved_locally',True)]:
+            with self.subTest(field=key):
+                m=tv_job_manifest();m['exports'][0]['recovery'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'must_not_claim_family'):validate(m,'tvos')
+    def test_tv_mode_retains_recovery_and_local_validation_gates(self):
+        for key in ['authenticated_recovery_verified','archive_command_succeeded','export_command_succeeded','signed_local_validation_passed']:
+            with self.subTest(field=key):
+                m=tv_job_manifest();m['exports'][0]['recovery'][key]=False
+                with self.assertRaisesRegex(c.Invalid,'authenticated_export'):validate(m,'tvos')
+    def test_unknown_or_undeclared_job_mode_rejected(self):
+        m=tv_job_manifest();m['exports'][0]['export_ci']['provenance_mode']='accept_any_job'
+        with self.assertRaisesRegex(c.Invalid,'mode_unknown'):validate(m,'tvos')
+        m=tv_job_manifest();del m['exports'][0]['export_ci']['provenance_mode']
+        with self.assertRaisesRegex(c.Invalid,'undeclared_job'):validate(m,'tvos')
+    def test_actual_tv_job_missing_or_mismatched_blocks(self):
+        r=tv_job_row()
+        with self.assertRaisesRegex(c.Invalid,'actual_tv'):c.verify_export_run(actual_tv_run(),r)
+        for key,value in [('id',999),('run_id',999),('run_attempt',2),('head_sha','f'*40),('name','export (macos)'),('status','in_progress'),('conclusion','failure')]:
+            with self.subTest(field=key):
+                job=actual_tv_job();job[key]=value
+                with self.assertRaisesRegex(c.Invalid,'actual_tv'):c.verify_export_run(actual_tv_run(),r,job)
+    def test_actual_tv_run_attempt_and_real_conclusion_required(self):
+        r=tv_job_row()
+        for key,value in [('run_attempt',2),('conclusion','success'),('status','in_progress')]:
+            with self.subTest(field=key):
+                run=actual_tv_run();run[key]=value
+                with self.assertRaises(c.Invalid):c.verify_export_run(run,r,actual_tv_job())
+    def test_fresh_tv_job_get_exact_scope_and_default_ios_no_job_get(self):
+        r=tv_job_row();base='https://api.github.com/repos/'+c.TOOLING_REPO+'/actions/'
+        h=JsonHTTP({base+'runs/'+r['export_ci']['run_id']:actual_tv_run(),base+'jobs/1234':actual_tv_job()})
+        proof=c.read_export_provenance(c.GitHub('TEST',h),r)
+        self.assertEqual(proof['successful_job']['id'],1234);self.assertEqual(len(h.calls),2)
+        r=row();run={'id':r['export_ci']['run_id'],**r['export_ci']};h=JsonHTTP({base+'runs/'+r['export_ci']['run_id']:run})
+        self.assertEqual(c.read_export_provenance(c.GitHub('TEST',h),r)['conclusion'],'failure');self.assertEqual(len(h.calls),1)
+    def test_unavailable_tv_job_metadata_stops(self):
+        r=tv_job_row();base='https://api.github.com/repos/'+c.TOOLING_REPO+'/actions/'
+        h=JsonHTTP({base+'runs/'+r['export_ci']['run_id']:actual_tv_run(),base+'jobs/1234':c.Invalid('metadata_unavailable')})
+        with self.assertRaisesRegex(c.Invalid,'metadata_unavailable'):c.read_export_provenance(c.GitHub('TEST',h),r)
+    def test_job_get_rejects_other_repo_queries_and_unrelated_paths(self):
+        h=JsonHTTP({});g=c.GitHub('TEST',h)
+        for path in ['/repos/other/repo/actions/jobs/1234','/repos/'+c.TOOLING_REPO+'/actions/jobs/1234?attempt=1','/repos/'+c.TOOLING_REPO+'/actions/jobs/1234/logs']:
+            with self.subTest(path=path),self.assertRaisesRegex(c.Invalid,'outside_scope'):g.get(path)
+        self.assertEqual(h.calls,[])
+    def test_preserved_manifest_is_exact_single_root_pinned_history(self):
+        self.assertEqual(c.PRESERVED_IOS_MANIFEST,{'asset_id':'615066957','name':'signed-export-cache-manifest-ios-0a0330c9077d.json','bytes':1495,'sha256':'0a0330c9077d35b56bdeeb87c03db2052603a0ff51dc4f3cf83b04eebf31551a'})
+        m=tv_job_manifest();m['preserved_manifests']=[copy.deepcopy(c.PRESERVED_IOS_MANIFEST)];self.assertIn('tvos',validate(m,'tvos'))
+        for key,value in [('asset_id','999'),('name','raw-profile.mobileprovision'),('bytes',1496),('sha256','f'*64)]:
+            with self.subTest(field=key):
+                changed=copy.deepcopy(m);changed['preserved_manifests'][0][key]=value
+                with self.assertRaisesRegex(c.Invalid,'exact_history_scope'):validate(changed,'tvos')
+        m['preserved_manifests']*=2
+        with self.assertRaisesRegex(c.Invalid,'exact_history_scope'):validate(m,'tvos')
+    def test_history_metadata_required_and_never_upload_input(self):
+        rows=validate(tv_job_manifest(),'tvos');prior=c.PRESERVED_IOS_MANIFEST
+        assets=[{'id':'9','name':c.MANIFEST_NAME,'size':42,'state':'uploaded'},{'id':'12','name':row('tvos')['name'],'size':12,'state':'uploaded'},{'id':prior['asset_id'],'name':prior['name'],'size':prior['bytes'],'state':'uploaded'}]
+        c.verify_assets(assets,'9',42,rows,[prior])
+        with self.assertRaisesRegex(c.Invalid,'unexpected_private'):c.verify_assets(assets,'9',42,rows)
+        assets[-1]['size']=1496
+        with self.assertRaisesRegex(c.Invalid,'exact_private'):c.verify_assets(assets,'9',42,rows,[prior])
+    def test_history_fresh_bytes_and_hash_readback(self):
+        raw=b'SYNTHETIC historical manifest';fixture={**c.PRESERVED_IOS_MANIFEST,'bytes':len(raw),'sha256':c.sha(raw)}
+        class HistoryGitHub:
+            def __init__(self):self.calls=[]
+            def download_asset(self,*args):self.calls.append(args);return raw
+        github=HistoryGitHub()
+        with patch.object(c,'PRESERVED_IOS_MANIFEST',fixture):
+            proof=c.read_preserved_manifests(github,[fixture]);self.assertFalse(proof[0]['upload_input']);self.assertTrue(proof[0]['hash_readback_verified'])
+            self.assertEqual(github.calls,[(fixture['asset_id'],fixture['sha256'],fixture['bytes'])])
+        wrong={**fixture,'sha256':'f'*64}
+        with patch.object(c,'PRESERVED_IOS_MANIFEST',wrong),self.assertRaisesRegex(c.Invalid,'hash_readback_failed'):c.read_preserved_manifests(github,[wrong])
     def test_private_cache_no_archive_profile_log(self):
         rows=validate(manifest());assets=[{'id':'9','name':c.MANIFEST_NAME,'size':42,'state':'uploaded'},{'id':'10','name':row()['name'],'size':12,'state':'uploaded'},{'id':'20','name':'raw-profile.mobileprovision','size':30,'state':'uploaded'}]
         with self.assertRaisesRegex(c.Invalid,'unexpected_private'):c.verify_assets(assets,'9',42,rows)
