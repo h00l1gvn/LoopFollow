@@ -1,0 +1,14 @@
+{
+  "schema": "ReBurrow-build3-export-coordinates-1",
+  "source_sha": "526c52eb2dd0fb2591a2f7b65aaca26d3a3a39a6",
+  "export_head_sha": "d119ccfc287ddba377e99fecc62871452fcf223a",
+  "export_run_id": 37539331789,
+  "export_job_id": 112528190082,
+  "workflow": ".github/workflows/resale-build3-corrected-export.yml",
+  "branch": "codex/resale-burrow-build3-corrected-export",
+  "event": "workflow_dispatch",
+  "job_name": "export (ios)",
+  "authenticated_successful_run_observed": true,
+  "run_evidence_sha256": "2d6551e13fd6b3130cc829b96ede68f6f21d664ff7947d0c4d26227e26509765",
+  "job_evidence_sha256": "fe5ff9e7816de0b57bc50eb246e47004fed254c963c586633d5eac713f51b647"
+}
