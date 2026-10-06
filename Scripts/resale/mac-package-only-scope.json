@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "team": "N8K8G6QA36",
+  "group": "group.com.julienbell.ResaleBurrow",
+  "source_repository": "h00l1gvn/resale-burrow-native",
+  "source_sha": "1162d8a1f4fdda1c2678220c9102f9c03ab48c33",
+  "tooling_sha": "6e6f97a1b18781c7ffc6cf620f15293c29515fc5",
+  "match_repository": "h00l1gvn/Match-Secrets",
+  "match_branch": "master",
+  "version": "0.1.0",
+  "build": "1",
+  "targets": [
+    {
+      "target": "ResaleBurrowIOS",
+      "bundle_id": "com.julienbell.ResaleBurrow",
+      "platform": "iOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_STORE",
+      "primary_asc": true,
+      "minimum_os": "17.0"
+    },
+    {
+      "target": "ResaleBurrowIOSWidgets",
+      "bundle_id": "com.julienbell.ResaleBurrow.widgets",
+      "platform": "iOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_STORE",
+      "primary_asc": false,
+      "minimum_os": "17.0"
+    },
+    {
+      "target": "ResaleBurrowWatch",
+      "bundle_id": "com.julienbell.ResaleBurrow.watch",
+      "platform": "watchOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_STORE",
+      "primary_asc": false,
+      "minimum_os": "10.0"
+    },
+    {
+      "target": "ResaleBurrowWatchWidgets",
+      "bundle_id": "com.julienbell.ResaleBurrow.watch.widgets",
+      "platform": "watchOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_STORE",
+      "primary_asc": false,
+      "minimum_os": "10.0"
+    },
+    {
+      "target": "ResaleBurrowMac",
+      "bundle_id": "com.julienbell.ResaleBurrow.mac",
+      "platform": "macOS",
+      "family": "macos",
+      "scheme": "ResaleBurrowMac",
+      "profile_type": "MAC_APP_STORE",
+      "primary_asc": true,
+      "minimum_os": "13.0"
+    },
+    {
+      "target": "ResaleBurrowMacWidgets",
+      "bundle_id": "com.julienbell.ResaleBurrow.mac.widgets",
+      "platform": "macOS",
+      "family": "macos",
+      "scheme": "ResaleBurrowMac",
+      "profile_type": "MAC_APP_STORE",
+      "primary_asc": false,
+      "minimum_os": "13.0"
+    },
+    {
+      "target": "ResaleBurrowTV",
+      "bundle_id": "com.julienbell.ResaleBurrow.tv",
+      "platform": "tvOS",
+      "family": "tvos",
+      "scheme": "ResaleBurrowTV",
+      "profile_type": "TVOS_APP_STORE",
+      "primary_asc": true,
+      "minimum_os": "17.0"
+    }
+  ],
+  "match_material_commit": "d001564051efa319ea96060b6d23c285d03959f6",
+  "recipient_spki_sha256": "62d6dc6cd0253c7d427f63fbadd9953247a6312146df856689955371cd3e6358",
+  "signing_delivery": "signed-archive-component-package-only",
+  "profile_manifest_required": false,
+  "certificates": {
+    "distribution": {
+      "certificate_id": "9K5USY2222",
+      "sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772",
+      "type": "DISTRIBUTION",
+      "expires_at": "2027-09-16T02:46:02+00:00",
+      "existing_private_key_challenge_verified": true,
+      "exact_current_apple_certificate_verified": true
+    },
+    "mac_app_distribution": {
+      "certificate_id": "9K5USY2222",
+      "sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772",
+      "type": "DISTRIBUTION",
+      "expires_at": "2027-09-16T02:46:02+00:00",
+      "existing_private_key_challenge_verified": true,
+      "exact_current_apple_certificate_verified": true
+    },
+    "mac_installer_distribution": {
+      "certificate_id": "WBR8H2GCGZ",
+      "sha256": "99d5b88d90d30283082420947296a6afa8e784cd5df9781c9eade2f7720f4df2",
+      "type": "MAC_INSTALLER_DISTRIBUTION",
+      "expires_at": "2027-09-27T22:42:49+00:00",
+      "existing_private_key_challenge_verified": true,
+      "exact_current_apple_certificate_verified": true
+    }
+  },
+  "credential_audit_run_id": 37438300955,
+  "verified_native_profiles": [
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow",
+      "native_profile_id": "9BGY6N8BFD",
+      "uuid": "17433330-6f4b-4a4c-acbc-6883a432b8f6",
+      "name": "ResaleBurrow AppStore ResaleBurrowIOS",
+      "profile_type": "IOS_APP_STORE",
+      "sha256": "0aae022404051e52b6210d28606dd9bbbd1ffb11b50622d17a94228d507d917b",
+      "native_readback_verified": true,
+      "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.widgets",
+      "native_profile_id": "DDY3DKMS86",
+      "uuid": "972cfe8e-78bf-42d2-91e8-9cf0e13e2eec",
+      "name": "ResaleBurrow AppStore ResaleBurrowIOSWidgets",
+      "profile_type": "IOS_APP_STORE",
+      "sha256": "0f871e1584ec5692eb96d2008cb17f48f627d364d38807988b6741a2249aa7b5",
+      "native_readback_verified": true,
+      "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.watch",
+      "native_profile_id": "SDV3XW4F27",
+      "uuid": "9379b33b-5d39-4d7d-9001-c1447ca61d8f",
+      "name": "ResaleBurrow AppStore ResaleBurrowWatch",
+      "profile_type": "IOS_APP_STORE",
+      "sha256": "763d0db65e956a7a28a83d27664f1d0e7d0f1ab05f92f19508444be0fd2169d3",
+      "native_readback_verified": true,
+      "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.watch.widgets",
+      "native_profile_id": "P95TG8C7Z7",
+      "uuid": "e6abf499-8d98-4a6c-843d-4a04ccc859f8",
+      "name": "ResaleBurrow AppStore ResaleBurrowWatchWidgets",
+      "profile_type": "IOS_APP_STORE",
+      "sha256": "1b237251f5dcdc4b38bb69d68b32033829141bb49e565052f6c19065652b2a56",
+      "native_readback_verified": true,
+      "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.mac",
+      "native_profile_id": "PAQRP4RMB6",
+      "uuid": "a75aee0f-6213-404e-a2e4-49a2ae638858",
+      "name": "ResaleBurrow AppStore ResaleBurrowMac",
+      "profile_type": "MAC_APP_STORE",
+      "sha256": "4a13481154b5cdf67fceb34937197a3a9903a5682272c2e3d4aae4a7326153eb",
+      "native_readback_verified": true,
+      "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.mac.widgets",
+      "native_profile_id": "H5PU2WUC2W",
+      "uuid": "cbcbfd94-e5e4-4f64-9d5c-d97980a23c3a",
+      "name": "ResaleBurrow AppStore ResaleBurrowMacWidgets",
+      "profile_type": "MAC_APP_STORE",
+      "sha256": "2abb80cf7f7e0868ff9cf2e0fcd21139affc43b9f0e48102c29882fd1eb0b96f",
+      "native_readback_verified": true,
+      "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772"
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.tv",
+      "native_profile_id": "6QNNTHY36L",
+      "uuid": "bff1cf5b-1c4e-425d-b079-52e388450f9e",
+      "name": "ResaleBurrow AppStore ResaleBurrowTV",
+      "profile_type": "TVOS_APP_STORE",
+      "sha256": "2854d5200d30aae6e069b979ea2b7760e64bec563c0468006d5ff13f467ef459",
+      "native_readback_verified": true,
+      "certificate_sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772"
+    }
+  ],
+  "profile_creation_run_id": 37441726233,
+  "recovery": {
+    "trusted_run_id": 37442839374,
+    "trusted_job_id": 112200481325,
+    "trusted_tooling_sha": "2ba103caea392fe96f6a7e1fca05472cabffaba0",
+    "archive_sha256": "ce610ab71d3282aec86aa70085abe6f32cf80bf9c1ff76f6d323d5ce5fd3234a",
+    "archive_bytes": 3331275,
+    "private_archive_release_id": 404552806,
+    "private_archive_asset_id": 615117417,
+    "private_archive_asset_name": "macos-archive-only-37442839374.tar.gz",
+    "local_strict_archive_report_sha256": "1d451959bbde83483de97fa61a40d8c4ea9df6aa433dee4bd68cb2ca1309bf0f",
+    "original_export_conclusion": "timed_out_after_successful_archive",
+    "original_distribution_logs_unavailable": true,
+    "component_route_primary_source": "https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution"
+  }
+}
