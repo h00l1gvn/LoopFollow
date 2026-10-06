@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "status": "prepared_offline_only",
+  "recorded_at": "2026-10-06T18:27:55.894041+00:00",
+  "source_sha": "038c9e2b61b5b6c28355c478c883edee8372e330",
+  "version": "0.1.0",
+  "build": "2",
+  "files": [
+    {
+      "path": "build2_contract.py",
+      "sha256": "b74f76655008a53504f711a8000f3fd9f4af2529a783de0cf66bfd786d960510"
+    },
+    {
+      "path": "build2_profile_audit.py",
+      "sha256": "157f6c52e0be45b28564144a55f388e195008476752412e1e11c702cb09b7311"
+    },
+    {
+      "path": "resale_apple_audit.py",
+      "sha256": "1ec975e20d66b08de3a48b9acba7dc59523fc13c9eb9b0ef27965f6c6992bc05"
+    },
+    {
+      "path": "scope.json",
+      "sha256": "58087176be80590f79c7b68b018d996eb82ea9fa2c1c25ff2e50cb99d005081e"
+    },
+    {
+      "path": "audit-requirements.txt",
+      "sha256": "8cf710466bed3f56185c7ba0b4627049765cb5df2a9855b4abb987b52594ab15"
+    },
+    {
+      "path": "protect_resale_artifact.cjs",
+      "sha256": "170ab027dbb2155fa859a4bc4e841d2f198346a0a334fdfc34cb2214bb128e6e"
+    },
+    {
+      "path": "artifact_crypto.cjs",
+      "sha256": "a1643a0828e04805f7aa6cde7acf0239a3fc9619cc971815d472d315d0177b3a"
+    },
+    {
+      "path": "resale-recipient-public.pem",
+      "sha256": "344f102576716781a265470b48f8e5d2644ecfc12a60edb19f4170d65d3cbe1e"
+    },
+    {
+      "path": "test_protect_resale_artifact.cjs",
+      "sha256": "fc6863360dff4517dd90dc029c3097abbbb1eb4c02f7b9cee9c9888be99c22af"
+    },
+    {
+      "path": "bryan/prepare_bryan_push_profiles.py",
+      "sha256": "42a399726725b89f64beb4d3e5869a49dd9b42a66a5e89adceeb49500a2b885c"
+    },
+    {
+      "path": "bryan/test_prepare_bryan_push_profiles.py",
+      "sha256": "9317d85a0e4b65b28788a7df811cc3c4724ac8db2639a25bd848e310e4e1ed61"
+    },
+    {
+      "path": "bryan/bryan-profile-preparation-scope.json",
+      "sha256": "2c452249aab441edb1dddc6c09a46888d1f070f33ecdac07e07ba79a03e25016"
+    },
+    {
+      "path": "bryan/resale-build2-bryan-push-profiles.yml",
+      "sha256": "3f9165ed7a3bbaa9ee433c2a4101b702fc2b811737e69fe0a3d9eaf9f821e7dd"
+    },
+    {
+      "path": "bryan/PROFILE_PREPARATION.md",
+      "sha256": "024a2d95aaea21950d5813e85e22aee5fcc81f0796e10926e9cc1a26024bbf96"
+    }
+  ],
+  "tests": {
+    "profile_guards": 38,
+    "envelope_guards": 4,
+    "preparation_layout_pass": true,
+    "ci_layout_pass": true,
+    "actual_sibling_export_scope_check_accepts_synthetic_emitted_scope": true,
+    "synthetic_only": true
+  },
+  "account_requests": 0,
+  "profile_posts": 0,
+  "cloud_push_or_dispatch": false,
+  "hardware_queries": 0,
+  "app_build_sign_export_install_upload": false,
+  "new_profile_ids_available": false,
+  "watch_hardware_eligibility_verified": false,
+  "public_hardware_identifier_or_fingerprint_retained": false,
+  "supersedes_initial_receipt_sha256": "e85b9d68646f1afef4fde71317fa22e3c9c03f031cede177e62e1e3da6611b77",
+  "bounded_successful_post_readback": {
+    "maximum_gets": 4,
+    "spacing_seconds": 15,
+    "post_retries": 0,
+    "actual_post_id_preserved_privately": true
+  }
+}

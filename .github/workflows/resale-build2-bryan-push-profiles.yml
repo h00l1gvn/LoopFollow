@@ -1,0 +1,74 @@
+name: ResaleBurrow build2 exact two Bryan Push profiles only
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/resale-burrow-build2-bryan-profiles]
+    paths: [.github/workflows/resale-build2-bryan-push-profiles.yml, Scripts/resale-build2/bryan/**]
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-build2-bryan-push-profiles
+  cancel-in-progress: false
+jobs:
+  profiles:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'h00l1gvn/LoopFollow' && github.actor == 'h00l1gvn' && github.ref == 'refs/heads/codex/resale-burrow-build2-bryan-profiles' && github.run_attempt == 1
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify frozen helper and public dependency bytes before credentials
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('Scripts/resale-build2')
+          freeze=json.loads((root/'bryan/profile-preparation-frozen.json').read_text())
+          for row in freeze['files']:
+              rel=pathlib.PurePosixPath(row['path'])
+              if rel.is_absolute() or '..' in rel.parts: raise SystemExit('Invalid public dependency path')
+              path=root/rel
+              if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest()!=row['sha256']: raise SystemExit('Public frozen dependency differs')
+          PY
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale-build2/audit-requirements.txt
+      - name: Offline exact profile boundary and protected artifact tests
+        run: |
+          python -m unittest discover -s Scripts/resale-build2/bryan -p 'test_prepare_bryan_push_profiles.py'
+          node --test Scripts/resale-build2/test_protect_resale_artifact.cjs
+      - name: Prepare only two approved production APS ad-hoc profiles
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-build2-bryan-profiles"
+          python Scripts/resale-build2/bryan/prepare_bryan_push_profiles.py --execute-reviewed-two-adhoc-profiles --scope Scripts/resale-build2/bryan/bryan-profile-preparation-scope.json --output "$RUNNER_TEMP/resale-build2-bryan-profiles/profiles" > "$RUNNER_TEMP/resale-build2-bryan-profiles/private-stdout.log" 2> "$RUNNER_TEMP/resale-build2-bryan-profiles/private-stderr.log"
+      - name: Encrypt profile bytes and private outcome evidence
+        if: always()
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-build2-bryan-profiles" "$RUNNER_TEMP/resale-build2-bryan-profiles-encrypted"
+          if [ ! -f "$RUNNER_TEMP/resale-build2-bryan-profiles/profiles/bryan-build2-profile-manifest.json" ]; then
+            printf '%s\n' '{"complete":false,"unknown_post_stop_no_retry":true,"build_or_install":false}' > "$RUNNER_TEMP/resale-build2-bryan-profiles/incomplete.json"
+          fi
+          tar -czf "$RUNNER_TEMP/resale-build2-bryan-profiles.tar.gz" -C "$RUNNER_TEMP" resale-build2-bryan-profiles
+          node Scripts/resale-build2/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-build2-bryan-profiles.tar.gz" "$RUNNER_TEMP/resale-build2-bryan-profiles-encrypted/profiles.gcm" "$RUNNER_TEMP/resale-build2-bryan-profiles-encrypted/profiles-envelope.json" Scripts/resale-build2/resale-recipient-public.pem Scripts/resale-build2/bryan/bryan-profile-preparation-scope.json ios "$GITHUB_RUN_ID"
+      - name: Preserve only encrypted profile evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ResaleBurrow-build2-bryan-push-profiles-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-build2-bryan-profiles-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Remove ephemeral raw profile and account evidence
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/resale-build2-bryan-profiles" "$RUNNER_TEMP/resale-build2-bryan-profiles.tar.gz"
