@@ -1,0 +1,64 @@
+name: ResaleBurrow build2 exact signing and push GET audit
+on:
+  push:
+    branches: [codex/resale-burrow-build2-signing-push-get]
+    paths: [.github/workflows/resale-build2-signing-push-get.yml, Scripts/resale-build2/**]
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-build2-signing-push-get
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/codex/resale-burrow-build2-signing-push-get'
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned public verification dependency
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale-build2/audit-requirements.txt
+      - name: Offline owned-scope and GET guards before API access
+        run: |
+          python -m unittest discover -s Scripts/resale-build2 -p 'test_build2_contract.py'
+          python -m unittest discover -s Scripts/resale-build2 -p 'test_build2_profile_audit.py'
+          node --test Scripts/resale-build2/test_protect_resale_artifact.cjs
+      - name: GET exact owned registrations, capabilities and Store profiles
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-build2-get"
+          python Scripts/resale-build2/build2_profile_audit.py --execute-reviewed-get-only --report "$RUNNER_TEMP/resale-build2-get/profile-capability-audit.json" > "$RUNNER_TEMP/resale-build2-get/audit-stdout.log" 2> "$RUNNER_TEMP/resale-build2-get/audit-stderr.log"
+      - name: Protect audit evidence without credentials or source
+        if: always()
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-build2-get" "$RUNNER_TEMP/resale-build2-encrypted"
+          if [ ! -f "$RUNNER_TEMP/resale-build2-get/profile-capability-audit.json" ]; then
+            printf '%s\n' '{"audit_completed":false,"account_mutations":0,"signed":false,"uploaded":false,"startup_or_audit_failed":true}' > "$RUNNER_TEMP/resale-build2-get/incomplete.json"
+          fi
+          tar -czf "$RUNNER_TEMP/resale-build2-get.tar.gz" -C "$RUNNER_TEMP" resale-build2-get
+          node Scripts/resale-build2/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-build2-get.tar.gz" "$RUNNER_TEMP/resale-build2-encrypted/audit.gcm" "$RUNNER_TEMP/resale-build2-encrypted/audit-envelope.json" Scripts/resale-build2/resale-recipient-public.pem Scripts/resale-build2/signing-push-audit-envelope-scope.json ios "$GITHUB_RUN_ID"
+      - name: Preserve encrypted GET evidence only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ResaleBurrow-build2-signing-push-GET-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-build2-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Clean private audit files
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/resale-build2-get" "$RUNNER_TEMP/resale-build2-get.tar.gz"
