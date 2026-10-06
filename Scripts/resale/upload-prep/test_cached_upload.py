@@ -56,7 +56,8 @@ def row(family='ios'):
 def manifest(families=('ios',)):
     return {'schema':'ResaleBurrow-signed-cache-2','complete':True,'repository':c.REPO,'source_sha':c.SOURCE,'approved_families':list(families),'exports':[row(f) for f in families]}
 def validate(m,family='ios'):
-    return c.validate_cache_manifest(m,source=c.SOURCE,family=family,delivery=row(family)['export_ci']['head_sha'],run_id=row(family)['export_ci']['run_id'])
+    selected=next((r for r in m['exports'] if r['family']==family),row(family))
+    return c.validate_cache_manifest(m,source=c.SOURCE,family=family,delivery=selected['export_ci']['head_sha'],run_id=selected['export_ci']['run_id'])
 def tv_job_row():
     r=row('tvos');ci=r['export_ci']
     ci.update({'provenance_mode':c.TV_JOB_MODE,'run_attempt':1,'successful_job':{'id':'1234','run_id':ci['run_id'],'run_attempt':1,'head_sha':ci['head_sha'],'name':'export (tvos)','status':'completed','conclusion':'success'}})
@@ -69,6 +70,14 @@ def actual_tv_run(r=None):
     return {'id':int(ci['run_id']),**{k:ci[k] for k in ('head_sha','status','conclusion','event','run_attempt')}}
 def actual_tv_job(r=None):
     job=copy.deepcopy((r or tv_job_row())['export_ci']['successful_job']);job['id']=int(job['id']);job['run_id']=int(job['run_id']);return job
+def mac_component_row():
+    r=row('macos');r['export_ci'].update({'run_id':c.MAC_COMPONENT_RUN['run_id'],'head_sha':c.MAC_COMPONENT_RUN['head_sha'],'run_attempt':1,'conclusion':'failure','name':c.MAC_PACKAGE_WORKFLOW_NAME,'workflow_path':c.MAC_PACKAGE_WORKFLOW_PATH})
+    recovery=r['recovery']
+    for key in ['archive_command_succeeded','export_command_succeeded','ci_failure_stage','validation_failure_resolved_locally']:del recovery[key]
+    recovery.update({'packaging_method':c.MAC_PACKAGE_METHOD,'archive_origin':copy.deepcopy(c.MAC_ARCHIVE_ORIGIN),'signed_archive_input_validated':True,'package_command_succeeded':True,'substantive_archive_files_unchanged':True,'source_rebuilt':False,'application_resigned':False,'component_command_origin':copy.deepcopy(c.MAC_COMPONENT_COMMAND_ORIGIN),'component_command_receipt_sha256':c.MAC_COMPONENT_RECEIPT_SHA256,'archive_comparison_receipt_sha256':c.MAC_ARCHIVE_PROOF_SHA256,'archive_transport_metadata_exception':copy.deepcopy(c.MAC_ARCHIVE_METADATA_EXCEPTION),'ci_failure_stage':'installer_signature_status_wording','validation_failure_resolved_locally':True})
+    return r
+def mac_component_manifest():
+    m=manifest(('macos',));m['exports']=[mac_component_row()];return m
 class Tests(unittest.TestCase):
     def test_ios_subset_honest_failed_ci_local_pass(self):self.assertEqual(set(validate(manifest())),{'ios'})
     def test_distinct_three_family_delivery_runs(self):self.assertEqual(len(validate(manifest(tuple(c.plan.APPS)))),3)
@@ -179,6 +188,107 @@ class Tests(unittest.TestCase):
             self.assertEqual(github.calls,[(fixture['asset_id'],fixture['sha256'],fixture['bytes'])])
         wrong={**fixture,'sha256':'f'*64}
         with patch.object(c,'PRESERVED_IOS_MANIFEST',wrong),self.assertRaisesRegex(c.Invalid,'hash_readback_failed'):c.read_preserved_manifests(github,[wrong])
+    def test_two_history_manifests_exact_order_and_pins(self):
+        self.assertEqual(c.PRESERVED_TV_MANIFEST,{'asset_id':'615123112','name':'signed-export-cache-manifest-tvos-3a89887c4f7e.json','bytes':3299,'sha256':'3a89887c4f7e8f3728276fa4933afcf51a23661efea75a1447c264042e5dbfc9'})
+        expected=[copy.deepcopy(c.PRESERVED_IOS_MANIFEST),copy.deepcopy(c.PRESERVED_TV_MANIFEST)]
+        m=tv_job_manifest();m['preserved_manifests']=expected;self.assertIn('tvos',validate(m,'tvos'))
+        for invalid in [[c.PRESERVED_TV_MANIFEST],list(reversed(expected)),expected+[expected[-1]]]:
+            with self.subTest(value=invalid),self.assertRaisesRegex(c.Invalid,'exact_history_scope'):c.validate_preserved_manifests(invalid)
+        for key,value in [('asset_id','999'),('name','signed-export-cache-manifest-other.json'),('bytes',3300),('sha256','f'*64)]:
+            with self.subTest(field=key):
+                invalid=copy.deepcopy(expected);invalid[1][key]=value
+                with self.assertRaisesRegex(c.Invalid,'exact_history_scope'):c.validate_preserved_manifests(invalid)
+    def test_two_history_manifests_need_native_metadata(self):
+        rows=validate(tv_job_manifest(),'tvos');history=[c.PRESERVED_IOS_MANIFEST,c.PRESERVED_TV_MANIFEST]
+        assets=[{'id':'9','name':c.MANIFEST_NAME,'size':42,'state':'uploaded'},{'id':'12','name':row('tvos')['name'],'size':12,'state':'uploaded'}]+[{'id':v['asset_id'],'name':v['name'],'size':v['bytes'],'state':'uploaded'} for v in history]
+        c.verify_assets(assets,'9',42,rows,history)
+        with self.assertRaisesRegex(c.Invalid,'exact_private'):c.verify_assets(assets[:-1],'9',42,rows,history)
+        assets[-1]['state']='new'
+        with self.assertRaisesRegex(c.Invalid,'exact_private'):c.verify_assets(assets,'9',42,rows,history)
+    def test_two_history_manifests_each_fresh_hash_never_selected(self):
+        iosraw=b'SYNTHETIC historical ios';tvraw=b'SYNTHETIC historical tv'
+        ios={**c.PRESERVED_IOS_MANIFEST,'bytes':len(iosraw),'sha256':c.sha(iosraw)};tv={**c.PRESERVED_TV_MANIFEST,'bytes':len(tvraw),'sha256':c.sha(tvraw)}
+        class HistoryGitHub:
+            def __init__(self,alter_tv=False):self.calls=[];self.alter_tv=alter_tv
+            def download_asset(self,*args):
+                self.calls.append(args)
+                return iosraw if args[0]==ios['asset_id'] else (b'altered' if self.alter_tv else tvraw)
+        with patch.object(c,'PRESERVED_IOS_MANIFEST',ios),patch.object(c,'PRESERVED_TV_MANIFEST',tv):
+            github=HistoryGitHub();proof=c.read_preserved_manifests(github,[ios,tv])
+            self.assertEqual(len(github.calls),2);self.assertTrue(all(v['hash_readback_verified'] and not v['upload_input'] for v in proof))
+            with self.assertRaisesRegex(c.Invalid,'hash_readback_failed'):c.read_preserved_manifests(HistoryGitHub(True),[ios,tv])
+    def test_mac_component_truthfully_separates_archive_and_packaging(self):
+        r=validate(mac_component_manifest(),'macos')['macos'];ci=r['export_ci']
+        run={'id':ci['run_id'],'head_sha':ci['head_sha'],'status':ci['status'],'conclusion':ci['conclusion'],'event':ci['event'],'name':ci['name'],'path':ci['workflow_path'],'run_attempt':ci['run_attempt']}
+        proof=c.verify_export_run(run,r)
+        self.assertEqual(proof['packaging_method'],'productbuild_component');self.assertFalse(proof['current_run_archive_or_exportArchive_claimed']);self.assertTrue(proof['archive_and_command_origins_are_root_reviewed_attestations']);self.assertEqual(proof['conclusion'],'failure')
+    def test_mac_component_does_not_relax_other_families(self):
+        for family in ('ios','tvos'):
+            with self.subTest(family=family):
+                m=manifest((family,));m['exports'][0]['recovery']=mac_component_row()['recovery'];m['exports'][0]['export_ci'].update({'conclusion':'success','name':c.MAC_PACKAGE_WORKFLOW_NAME,'workflow_path':c.MAC_PACKAGE_WORKFLOW_PATH})
+                with self.assertRaisesRegex(c.Invalid,'mac_component_exact_actual'):validate(m,family)
+    def test_mac_component_requires_exact_failed_package_workflow(self):
+        for key,value in [('conclusion','success'),('run_id','999'),('head_sha','f'*40),('run_attempt',2),('name','Another workflow'),('workflow_path','.github/workflows/other.yml')]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['export_ci'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'mac_component_exact_actual'):validate(m,'macos')
+    def test_mac_component_requires_exact_original_archive_pins(self):
+        for key,value in [('repository','other/repo'),('run_id','999'),('job_id','999'),('head_sha','f'*40),('archive_sha256','f'*64),('archive_command_succeeded',False)]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery']['archive_origin'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'verified_archive_and_package'):validate(m,'macos')
+    def test_mac_component_requires_current_validation_package_and_unchanged_input(self):
+        for key,value in [('signed_archive_input_validated',False),('package_command_succeeded',False),('substantive_archive_files_unchanged',False),('source_rebuilt',True),('application_resigned',True)]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'verified_archive_and_package'):validate(m,'macos')
+    def test_mac_component_cannot_claim_current_archive_or_exportArchive(self):
+        for key,value in [('archive_command_succeeded',True),('export_command_succeeded',True)]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'must_not_claim_current'):validate(m,'macos')
+    def test_mac_component_requires_authenticated_exact_command_receipt(self):
+        for key,value in [('component_command_origin',{}),('component_command_receipt_sha256',''),('component_command_receipt_sha256','not-a-sha'),('component_command_receipt_sha256','d'*64)]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'authenticated_command'):validate(m,'macos')
+        for key,value in [('run_id','999'),('job_id','999'),('head_sha','f'*40),('command','xcodebuild -exportArchive'),('exit_code',1)]:
+            with self.subTest(origin_field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery']['component_command_origin'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'authenticated_command'):validate(m,'macos')
+    def test_mac_component_requires_exact_wording_failure_resolved_locally(self):
+        for key,value in [('ci_failure_stage','package_command_failed'),('validation_failure_resolved_locally',False)]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'exact_validation_resolution'):validate(m,'macos')
+    def test_mac_component_requires_exact_substantive_archive_receipt(self):
+        for key,value in [('archive_comparison_receipt_sha256','f'*64),('archive_transport_metadata_exception',{}),('archive_unchanged_by_packaging',True)]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'substantive_archive_proof'):validate(m,'macos')
+    def test_mac_component_metadata_exception_cannot_cover_signed_payload(self):
+        for key,value in [('relative_path','ResaleBurrow.xcarchive/Products/Applications/app.app/binary'),('sha256','f'*64),('bytes',173),('magic','wrong'),('version','wrong'),('outside_signed_app_and_widget_payload',False),('literal_tar_member_equality_claimed',True),('entry_descriptors',[])]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery']['archive_transport_metadata_exception'][key]=value
+                with self.assertRaisesRegex(c.Invalid,'substantive_archive_proof'):validate(m,'macos')
+    def test_mac_component_retains_hash_and_local_validation_gates(self):
+        for key,value in [('authenticated_recovery_verified',False),('signed_local_validation_passed',False),('export_sha256','f'*64),('local_validation_receipt_sha256','')]:
+            with self.subTest(field=key):
+                m=mac_component_manifest();m['exports'][0]['recovery'][key]=value
+                with self.assertRaises(c.Invalid):validate(m,'macos')
+    def test_unknown_packaging_method_blocked(self):
+        m=mac_component_manifest();m['exports'][0]['recovery']['packaging_method']='unknown'
+        with self.assertRaisesRegex(c.Invalid,'method_unknown'):validate(m,'macos')
+    def test_actual_mac_package_run_must_keep_failure_and_exact_workflow(self):
+        r=mac_component_row();ci=r['export_ci'];run={'id':ci['run_id'],'head_sha':ci['head_sha'],'status':ci['status'],'conclusion':ci['conclusion'],'event':ci['event'],'name':ci['name'],'path':ci['workflow_path'],'run_attempt':ci['run_attempt']}
+        for key,value in [('name','Another workflow'),('path','.github/workflows/other.yml'),('conclusion','success'),('head_sha','f'*40),('run_attempt',2)]:
+            with self.subTest(field=key):
+                changed={**run,key:value}
+                with self.assertRaises(c.Invalid):c.verify_export_run(changed,r)
+    def test_fresh_mac_package_provenance_get_without_job_bypass(self):
+        r=mac_component_row();ci=r['export_ci'];run={'id':ci['run_id'],'head_sha':ci['head_sha'],'status':ci['status'],'conclusion':ci['conclusion'],'event':ci['event'],'name':ci['name'],'path':ci['workflow_path'],'run_attempt':ci['run_attempt']}
+        h=JsonHTTP({'https://api.github.com/repos/'+c.TOOLING_REPO+'/actions/runs/'+ci['run_id']:run})
+        self.assertEqual(c.read_export_provenance(c.GitHub('TEST',h),r)['packaging_method'],c.MAC_PACKAGE_METHOD);self.assertEqual(len(h.calls),1)
     def test_private_cache_no_archive_profile_log(self):
         rows=validate(manifest());assets=[{'id':'9','name':c.MANIFEST_NAME,'size':42,'state':'uploaded'},{'id':'10','name':row()['name'],'size':12,'state':'uploaded'},{'id':'20','name':'raw-profile.mobileprovision','size':30,'state':'uploaded'}]
         with self.assertRaisesRegex(c.Invalid,'unexpected_private'):c.verify_assets(assets,'9',42,rows)

@@ -5,7 +5,8 @@
   "source_sha": "1162d8a1f4fdda1c2678220c9102f9c03ab48c33",
   "approved_families": [
     "ios",
-    "tvos"
+    "tvos",
+    "macos"
   ],
   "exports": [
     {
@@ -78,6 +79,85 @@
         "recovery_receipt_sha256": "REPLACE_ACTUAL_AUTHENTICATED_TV_RECOVERY_RECEIPT_SHA256",
         "local_validation_receipt_sha256": "REPLACE_ACTUAL_TV_LOCAL_VALIDATION_RECEIPT_SHA256"
       }
+    },
+    {
+      "family": "macos",
+      "asc_id": "6819601423",
+      "bundle_id": "com.julienbell.ResaleBurrow.mac",
+      "version": "0.1.0",
+      "build": "1",
+      "distribution": "app-store",
+      "name": "ResaleBurrow-macos-0.1.0-1.pkg",
+      "asset_id": "REPLACE_ACTUAL_PRIVATE_MAC_ASSET_ID",
+      "bytes": 3345600,
+      "sha256": "6fa68c3c5f90c03e57a2614bda728e1884c3b52c242d2a07429a5e409341c9b3",
+      "export_ci": {
+        "repository": "h00l1gvn/LoopFollow",
+        "run_id": "37447312021",
+        "head_sha": "03016c478e0c4e60e88f9401ee4287a32e3d7094",
+        "status": "completed",
+        "conclusion": "failure",
+        "event": "push",
+        "name": "ResaleBurrow exact cached Mac package only (no upload)",
+        "workflow_path": ".github/workflows/resale-mac-package-only.yml",
+        "run_attempt": 1
+      },
+      "recovery": {
+        "authenticated_recovery_verified": true,
+        "signed_local_validation_passed": true,
+        "export_sha256": "6fa68c3c5f90c03e57a2614bda728e1884c3b52c242d2a07429a5e409341c9b3",
+        "recovery_receipt_sha256": "4a93a984aaa90961dff652885d2883f700937821911cef990accea41459b92cf",
+        "local_validation_receipt_sha256": "b3128aae90d6c55304c1b121a05dcc80fe367e4e3cabe733b34a2902852be2de",
+        "packaging_method": "productbuild_component",
+        "archive_origin": {
+          "repository": "h00l1gvn/LoopFollow",
+          "run_id": "37442839374",
+          "job_id": "112200481325",
+          "head_sha": "2ba103caea392fe96f6a7e1fca05472cabffaba0",
+          "archive_sha256": "ce610ab71d3282aec86aa70085abe6f32cf80bf9c1ff76f6d323d5ce5fd3234a",
+          "archive_command_succeeded": true
+        },
+        "signed_archive_input_validated": true,
+        "package_command_succeeded": true,
+        "substantive_archive_files_unchanged": true,
+        "source_rebuilt": false,
+        "application_resigned": false,
+        "component_command_origin": {
+          "run_id": "37447312021",
+          "head_sha": "03016c478e0c4e60e88f9401ee4287a32e3d7094",
+          "job_id": "112215152528",
+          "command": "productbuild --component",
+          "exit_code": 0
+        },
+        "component_command_receipt_sha256": "702d1cbe317b31d3da72563dc5ffa0629f2dc22371bf58c9472763cb4856c077",
+        "ci_failure_stage": "installer_signature_status_wording",
+        "validation_failure_resolved_locally": true,
+        "archive_comparison_receipt_sha256": "4a93a984aaa90961dff652885d2883f700937821911cef990accea41459b92cf",
+        "archive_transport_metadata_exception": {
+          "relative_path": "ResaleBurrow.xcarchive/._Products",
+          "sha256": "4798dcd53450d1b8bd450cf6e57b913e12a90a3baf6a63c051c5153c68cc3c1e",
+          "bytes": 172,
+          "magic": "0x51607",
+          "version": "0x20000",
+          "entry_descriptors": [
+            {
+              "entry_id": 9,
+              "offset": 50,
+              "length": 122
+            },
+            {
+              "entry_id": 2,
+              "offset": 172,
+              "length": 0
+            }
+          ],
+          "associated_directory": "ResaleBurrow.xcarchive/Products",
+          "outside_signed_app_and_widget_payload": true,
+          "present_in_original_transport_tar": true,
+          "present_in_recovered_result_tar": false,
+          "literal_tar_member_equality_claimed": false
+        }
+      }
     }
   ],
   "preserved_manifests": [
@@ -86,6 +166,12 @@
       "name": "signed-export-cache-manifest-ios-0a0330c9077d.json",
       "bytes": 1495,
       "sha256": "0a0330c9077d35b56bdeeb87c03db2052603a0ff51dc4f3cf83b04eebf31551a"
+    },
+    {
+      "asset_id": "615123112",
+      "name": "signed-export-cache-manifest-tvos-3a89887c4f7e.json",
+      "bytes": 3299,
+      "sha256": "3a89887c4f7e8f3728276fa4933afcf51a23661efea75a1447c264042e5dbfc9"
     }
   ]
 }

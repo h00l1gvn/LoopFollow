@@ -36,6 +36,16 @@ DEPENDENCIES={'Gemfile':'c4d7c24a57bd57e7b62143b3af29af6dfc42e407425685ae8b65464
 RECIPIENT='62d6dc6cd0253c7d427f63fbadd9953247a6312146df856689955371cd3e6358'
 TV_JOB_MODE='completed_successful_tvos_job'
 PRESERVED_IOS_MANIFEST={'asset_id':'615066957','name':'signed-export-cache-manifest-ios-0a0330c9077d.json','bytes':1495,'sha256':'0a0330c9077d35b56bdeeb87c03db2052603a0ff51dc4f3cf83b04eebf31551a'}
+PRESERVED_TV_MANIFEST={'asset_id':'615123112','name':'signed-export-cache-manifest-tvos-3a89887c4f7e.json','bytes':3299,'sha256':'3a89887c4f7e8f3728276fa4933afcf51a23661efea75a1447c264042e5dbfc9'}
+MAC_PACKAGE_METHOD='productbuild_component'
+MAC_PACKAGE_WORKFLOW_NAME='ResaleBurrow exact cached Mac package only (no upload)'
+MAC_PACKAGE_WORKFLOW_PATH='.github/workflows/resale-mac-package-only.yml'
+MAC_ARCHIVE_ORIGIN={'repository':TOOLING_REPO,'run_id':'37442839374','job_id':'112200481325','head_sha':'2ba103caea392fe96f6a7e1fca05472cabffaba0','archive_sha256':'ce610ab71d3282aec86aa70085abe6f32cf80bf9c1ff76f6d323d5ce5fd3234a','archive_command_succeeded':True}
+MAC_COMPONENT_RUN={'run_id':'37447312021','head_sha':'03016c478e0c4e60e88f9401ee4287a32e3d7094','run_attempt':1,'job_id':'112215152528'}
+MAC_COMPONENT_COMMAND_ORIGIN={**{k:MAC_COMPONENT_RUN[k] for k in ('run_id','head_sha','job_id')},'command':'productbuild --component','exit_code':0}
+MAC_COMPONENT_RECEIPT_SHA256='702d1cbe317b31d3da72563dc5ffa0629f2dc22371bf58c9472763cb4856c077'
+MAC_ARCHIVE_PROOF_SHA256='4a93a984aaa90961dff652885d2883f700937821911cef990accea41459b92cf'
+MAC_ARCHIVE_METADATA_EXCEPTION={'relative_path':'ResaleBurrow.xcarchive/._Products','sha256':'4798dcd53450d1b8bd450cf6e57b913e12a90a3baf6a63c051c5153c68cc3c1e','bytes':172,'magic':'0x51607','version':'0x20000','entry_descriptors':[{'entry_id':9,'offset':50,'length':122},{'entry_id':2,'offset':172,'length':0}],'associated_directory':'ResaleBurrow.xcarchive/Products','outside_signed_app_and_widget_payload':True,'present_in_original_transport_tar':True,'present_in_recovered_result_tar':False,'literal_tar_member_equality_claimed':False}
 
 class Invalid(ValueError): pass
 def require(value,code):
@@ -168,7 +178,7 @@ class Apple:
         plan.collision_precheck(result,family);return result
 
 def validate_preserved_manifests(value):
-    require(isinstance(value,list) and (value==[] or value==[PRESERVED_IOS_MANIFEST]),'preserved_manifest_outside_exact_history_scope')
+    require(isinstance(value,list) and value in ([],[PRESERVED_IOS_MANIFEST],[PRESERVED_IOS_MANIFEST,PRESERVED_TV_MANIFEST]),'preserved_manifest_outside_exact_history_scope')
     return value
 
 def validate_cache_manifest(value,*,source,family,delivery,run_id):
@@ -185,6 +195,8 @@ def validate_cache_manifest(value,*,source,family,delivery,run_id):
         require(row.get('name')==name and numeric(row.get('asset_id')) and type(row.get('bytes')) is int and 0<row['bytes']<=MAX_PACKAGE and re.fullmatch(r'[a-f0-9]{64}',row.get('sha256','')),'cache_asset_pin_invalid')
         ci=row.get('export_ci',{});recovery=row.get('recovery',{})
         require(ci.get('repository')==TOOLING_REPO and numeric(ci.get('run_id')) and re.fullmatch(r'[a-f0-9]{40}',ci.get('head_sha','')) and ci.get('status')=='completed' and ci.get('conclusion') in ('success','failure') and ci.get('event') in ('push','workflow_dispatch'),'per_family_actual_export_provenance_required')
+        method=recovery.get('packaging_method')
+        require(method in (None,MAC_PACKAGE_METHOD),'export_packaging_method_unknown')
         mode=ci.get('provenance_mode')
         require(mode in (None,TV_JOB_MODE),'export_provenance_mode_unknown')
         if mode==TV_JOB_MODE:
@@ -192,11 +204,19 @@ def validate_cache_manifest(value,*,source,family,delivery,run_id):
             require(row['family']=='tvos' and type(ci.get('run_attempt')) is int and ci['run_attempt']>0 and isinstance(job,dict),'tv_successful_job_scope_required')
             require(numeric(job.get('id')) and str(job.get('run_id'))==str(ci['run_id']) and job.get('head_sha')==ci['head_sha'] and job.get('run_attempt')==ci['run_attempt'] and job.get('name')=='export (tvos)' and job.get('status')=='completed' and job.get('conclusion')=='success','tv_successful_job_pins_required')
             require('ci_failure_stage' not in recovery and 'validation_failure_resolved_locally' not in recovery,'tv_successful_job_must_not_claim_family_validation_failure')
-        else:require('successful_job' not in ci and 'run_attempt' not in ci,'undeclared_job_provenance_forbidden')
-        require(recovery.get('authenticated_recovery_verified') is True and recovery.get('archive_command_succeeded') is True and recovery.get('export_command_succeeded') is True and recovery.get('signed_local_validation_passed') is True and recovery.get('export_sha256')==row['sha256'],'authenticated_export_recovery_required')
+        else:require('successful_job' not in ci and ('run_attempt' not in ci or method==MAC_PACKAGE_METHOD),'undeclared_job_provenance_forbidden')
+        require(recovery.get('authenticated_recovery_verified') is True and recovery.get('signed_local_validation_passed') is True and recovery.get('export_sha256')==row['sha256'],'authenticated_export_recovery_required')
+        if method==MAC_PACKAGE_METHOD:
+            require(row['family']=='macos' and mode is None and ci['conclusion']=='failure' and str(ci['run_id'])==MAC_COMPONENT_RUN['run_id'] and ci['head_sha']==MAC_COMPONENT_RUN['head_sha'] and type(ci.get('run_attempt')) is int and ci['run_attempt']==MAC_COMPONENT_RUN['run_attempt'] and ci.get('name')==MAC_PACKAGE_WORKFLOW_NAME and ci.get('workflow_path')==MAC_PACKAGE_WORKFLOW_PATH,'mac_component_exact_actual_package_run_required')
+            require(recovery.get('archive_origin')==MAC_ARCHIVE_ORIGIN and recovery.get('signed_archive_input_validated') is True and recovery.get('package_command_succeeded') is True and recovery.get('substantive_archive_files_unchanged') is True and recovery.get('source_rebuilt') is False and recovery.get('application_resigned') is False,'mac_component_verified_archive_and_package_required')
+            require(recovery.get('component_command_origin')==MAC_COMPONENT_COMMAND_ORIGIN and recovery.get('component_command_receipt_sha256')==MAC_COMPONENT_RECEIPT_SHA256,'mac_component_authenticated_command_receipt_required')
+            require(recovery.get('archive_comparison_receipt_sha256')==MAC_ARCHIVE_PROOF_SHA256 and recovery.get('archive_transport_metadata_exception')==MAC_ARCHIVE_METADATA_EXCEPTION and 'archive_unchanged_by_packaging' not in recovery,'mac_component_exact_substantive_archive_proof_required')
+            require(recovery.get('ci_failure_stage')=='installer_signature_status_wording' and recovery.get('validation_failure_resolved_locally') is True,'mac_component_exact_validation_resolution_required')
+            require(not any(k in recovery for k in ('archive_command_succeeded','export_command_succeeded')),'mac_component_must_not_claim_current_archive_or_exportArchive')
+        else:require(recovery.get('archive_command_succeeded') is True and recovery.get('export_command_succeeded') is True,'authenticated_export_recovery_required')
         for k in ('recovery_receipt_sha256','local_validation_receipt_sha256'):
             require(re.fullmatch(r'[a-f0-9]{64}',recovery.get(k,'')),'pinned_recovery_and_validation_receipts_required')
-        if ci['conclusion']=='failure' and mode is None:require(recovery.get('ci_failure_stage')=='post_export_validation' and recovery.get('validation_failure_resolved_locally') is True,'failed_export_run_not_explained_by_verified_recovery')
+        if ci['conclusion']=='failure' and mode is None and method is None:require(recovery.get('ci_failure_stage')=='post_export_validation' and recovery.get('validation_failure_resolved_locally') is True,'failed_export_run_not_explained_by_verified_recovery')
     require(len({str(r['asset_id']) for r in rows})==len(rows),'cache_asset_ids_not_unique')
     selected=next(r for r in rows if r['family']==family)
     require(selected['export_ci']['head_sha']==delivery and str(selected['export_ci']['run_id'])==str(run_id),'selected_family_export_pin_mismatch')
@@ -212,6 +232,9 @@ def verify_export_run(run,row,job=None):
         require(str(job.get('id'))==str(expected['id']) and str(job.get('run_id'))==str(run['id']) and job.get('run_attempt')==run['run_attempt'] and job.get('head_sha')==run['head_sha'] and job.get('name')==expected['name']=='export (tvos)' and job.get('status')==expected['status']=='completed' and job.get('conclusion')==expected['conclusion']=='success','actual_tv_successful_job_not_verified')
         result.update({'provenance_mode':TV_JOB_MODE,'run_attempt':run['run_attempt'],'successful_job':{k:job[k] for k in ('id','run_id','run_attempt','head_sha','name','status','conclusion')}})
     else:require(job is None,'undeclared_actual_job_provenance_forbidden')
+    if row.get('recovery',{}).get('packaging_method')==MAC_PACKAGE_METHOD:
+        require(row['family']=='macos' and str(run.get('id'))==MAC_COMPONENT_RUN['run_id'] and run.get('head_sha')==MAC_COMPONENT_RUN['head_sha'] and run.get('run_attempt')==MAC_COMPONENT_RUN['run_attempt'] and run.get('conclusion')=='failure' and run.get('name')==ci.get('name')==MAC_PACKAGE_WORKFLOW_NAME and run.get('path')==ci.get('workflow_path')==MAC_PACKAGE_WORKFLOW_PATH,'actual_mac_component_package_run_not_verified')
+        result.update({'packaging_method':MAC_PACKAGE_METHOD,'name':run['name'],'workflow_path':run['path'],'run_attempt':run['run_attempt'],'archive_origin':row['recovery']['archive_origin'],'component_command_origin':row['recovery']['component_command_origin'],'component_command_receipt_sha256':row['recovery']['component_command_receipt_sha256'],'substantive_archive_files_unchanged':True,'archive_comparison_receipt_sha256':row['recovery']['archive_comparison_receipt_sha256'],'archive_transport_metadata_exception':row['recovery']['archive_transport_metadata_exception'],'ci_failure_stage':row['recovery']['ci_failure_stage'],'validation_failure_resolved_locally':True,'archive_and_command_origins_are_root_reviewed_attestations':True,'current_run_archive_or_exportArchive_claimed':False})
     return result
 
 def read_export_provenance(github,row):
