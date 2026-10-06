@@ -1,0 +1,48 @@
+name: ResaleBurrow credential and signing-material audit (GET only)
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/resale-burrow-get-only-preflight]
+    paths:
+      - .github/workflows/resale-get-only-preflight.yml
+      - Scripts/resale/**
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-get-only-preflight
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/codex/resale-burrow-get-only-preflight'
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install scoped audit dependencies
+        run: python -m pip install --only-binary=:all: -r Scripts/resale/audit-requirements.txt
+      - name: Verify GET/privacy guards with synthetic fixtures
+        run: python -m unittest discover -s Scripts/resale -p test_resale_apple_audit.py -v
+      - name: Read exact source, registrations, profiles and existing signing material
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: |
+          umask 077
+          python Scripts/resale/resale_apple_audit.py --report "$RUNNER_TEMP/resale-audit/report.json" --summary "$GITHUB_STEP_SUMMARY"
+      - name: Preserve sanitized metadata report only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ResaleBurrow-GET-only-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-audit/report.json
+          if-no-files-found: ignore
+          retention-days: 3
