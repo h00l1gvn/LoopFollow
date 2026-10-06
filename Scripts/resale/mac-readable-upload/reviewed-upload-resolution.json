@@ -1,0 +1,28 @@
+{
+  "schema": "ResaleBurrow-distinct-corrected-upload-resolution-1",
+  "prior_upload_run_id": 37449861460,
+  "prior_operation_id": "c8e55a7e6dfe5eb9b0e42aa95e021fd02b91dbec369f43136ffd75f2aa1a6056",
+  "prior_package_sha256": "6fa68c3c5f90c03e57a2614bda728e1884c3b52c242d2a07429a5e409341c9b3",
+  "prior_journal_status": "unknown_stop_no_retry_preserved",
+  "actual_Apple_error": {
+    "http": 409,
+    "code": -19241,
+    "basis": "Actual authenticated uploader diagnostics: stored root-only payload prevented signature verification.",
+    "evidence_sha256": "2c367d01163bb7f7f9411d72ba57302bd121a1c2c4ceae1f11fdb9f1e4cdf426"
+  },
+  "new_package_sha256": "e6a898b69bbced5bc355b1d41eb93e9c3997d417558095ddc05405862ce46f9f",
+  "new_package_run_id": 37491147579,
+  "new_package_head_sha": "8c34e2b367370eec6a977fcd1df3e7d4a69503c6",
+  "new_private_release_id": 404923695,
+  "new_validation_run_id": 37494502248,
+  "new_validation_result_asset_id": 616019351,
+  "new_validation_result_sha256": "3dc7ce3e3a5bb22e57b5ec38ebf5300bf92be951e96ac7d984d61de0a4378e42",
+  "actual_validation_status": "validation_tool_reported_success",
+  "stored_CPIO_BOM_and_signatures_revalidated": true,
+  "source_rebuilt_or_app_resigned": false,
+  "prior_unknown_journal_closed_or_overwritten": false,
+  "absence_alone_used_as_retry_proof": false,
+  "fresh_exact_collision_GET_required_before_new_upload": true,
+  "new_operation_key": "71f70dac793d252dfe483ff9632332061fbf118c58cdcabcba608814e6c3b1d0",
+  "root_review_and_explicit_dispatch_required": true
+}

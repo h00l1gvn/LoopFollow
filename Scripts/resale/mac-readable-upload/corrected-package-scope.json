@@ -1,0 +1,62 @@
+{
+  "schema": "ResaleBurrow-corrected-Mac-cache-1",
+  "private_repository": "h00l1gvn/resale-burrow-native",
+  "tooling_repository": "h00l1gvn/LoopFollow",
+  "source_sha": "1162d8a1f4fdda1c2678220c9102f9c03ab48c33",
+  "family": "macos",
+  "asc_id": "6819601423",
+  "bundle_id": "com.julienbell.ResaleBurrow.mac",
+  "widget_bundle_id": "com.julienbell.ResaleBurrow.mac.widgets",
+  "team_id": "N8K8G6QA36",
+  "version": "0.1.0",
+  "build": "1",
+  "package_run_id": 37491147579,
+  "package_job_id": 112363901802,
+  "package_head_sha": "8c34e2b367370eec6a977fcd1df3e7d4a69503c6",
+  "package_workflow_path": ".github/workflows/resale-mac-readable-package.yml",
+  "package_sha256": "e6a898b69bbced5bc355b1d41eb93e9c3997d417558095ddc05405862ce46f9f",
+  "package_bytes": 3345619,
+  "package_name": "ResaleBurrow-macos-readable-0.1.0-1-37491147579.pkg",
+  "manifest_name": "corrected-macos-package-manifest-37491147579.json",
+  "new_private_release_tag": "resale-burrow-0.1.0-build-1-macos-readable-repair-37491147579",
+  "operation_key": "macos-readable-repair-37491147579-e6a898b69bbc",
+  "original_archive_sha256": "ce610ab71d3282aec86aa70085abe6f32cf80bf9c1ff76f6d323d5ce5fd3234a",
+  "old_package_sha256": "6fa68c3c5f90c03e57a2614bda728e1884c3b52c242d2a07429a5e409341c9b3",
+  "old_upload_run_id": 37449861460,
+  "old_private_release_id": 404532466,
+  "old_journals": [
+    {
+      "asset_id": 615190954,
+      "name": "upload-intent-macos-0.1.0-1.json",
+      "sha256": "4cc4d2f5f29ea879db2400e53ffa6b1191f19094c871847e5c9ab31d1645cada",
+      "bytes": 555
+    },
+    {
+      "asset_id": 615192964,
+      "name": "upload-result-macos-0.1.0-1.json",
+      "sha256": "dc84f13de6459baf0371d4a74bcdd555ef0989efa328056d9092b3bee46b280a",
+      "bytes": 599
+    }
+  ],
+  "evidence": {
+    "recovery_receipt": {
+      "name": "package-terminal-authenticated-recovery.json",
+      "sha256": "c8be68b8c6d5ac0bfe598ae6ca1a9c2cde09a5aa1660dbd0156a3a8d4d7b5d07"
+    },
+    "local_validation_receipt": {
+      "name": "package-independent-local-validation.json",
+      "sha256": "20e4930dc8dc20758de56366d94d67c550115967f3b7e0a237f22fb0bbd801fa"
+    }
+  },
+  "package_provenance_sha256": "616bacef71bf65befea7fa6c8a16493e8ca53b508410978e00e94fc98e9a365c",
+  "package_step_receipt_sha256": "4f27f718070dc0d847471fc140dae3bdc1c2feacff9d4d165f10c7507b9f725c",
+  "strict_validator_sha256": "f88813eb4a7765ad93a05c00540b63fdb92c42d9547cb89d3313d66b28181f00",
+  "permission_helper_sha256": "e929d05b48737b4d870d1855b7797ebc95e844347c21e55ec459f887a355ba09",
+  "strict_report_sha256": "e929aa202518678e1fc13927c4fc421a620cd858353474fd14ddd64fd292336d",
+  "recipient_spki_sha256": "62d6dc6cd0253c7d427f63fbadd9953247a6312146df856689955371cd3e6358",
+  "packaging_method": "productbuild_component_readable_signed_copy",
+  "old_unknown_upload_journal_must_remain_immutable": true,
+  "Apple_validation_required_before_upload": true,
+  "Apple_upload_authorized_by_this_scope": false,
+  "requires_fresh_exact_APP_collision_GET": true
+}
