@@ -1,0 +1,33 @@
+# Standalone upload lane. No signing, match, builds, groups or release actions.
+require 'json'
+require 'digest'
+require 'base64'
+
+lane :upload_resale_cached_once do
+  UI.user_error!('Reviewed durable reservation required.') unless ENV['RESALE_EXECUTE_REVIEWED_UPLOAD'] == 'true'
+  UI.user_error!('Locked Fastlane required.') unless Gem.loaded_specs.fetch('fastlane').version.to_s == '2.237.0'
+  allowed = {
+    '6819601040' => ['com.julienbell.ResaleBurrow', 'ios', 'ipa'],
+    '6819601423' => ['com.julienbell.ResaleBurrow.mac', 'osx', 'pkg'],
+    '6819601651' => ['com.julienbell.ResaleBurrow.tv', 'appletvos', 'ipa']
+  }
+  file = ENV.fetch('RESALE_UPLOAD_OPTIONS')
+  UI.user_error!('Private options required.') unless File.file?(file) && !File.symlink?(file) && (File.stat(file).mode & 077) == 0
+  options = JSON.parse(File.read(file))
+  identity = allowed[options['apple_id']]
+  UI.user_error!('Exact owned application required.') unless identity
+  package_key = identity[2]
+  required = ['apple_id', 'app_identifier', 'app_platform', package_key, 'app_version', 'build_number', 'skip_submission', 'skip_waiting_for_build_processing', 'distribute_external', 'notify_external_testers']
+  UI.user_error!('Upload options outside scope.') unless options.keys.sort == required.sort
+  UI.user_error!('Exact identity required.') unless options['app_identifier'] == identity[0] && options['app_platform'] == identity[1] && options['app_version'] == '0.1.0' && options['build_number'] == '1'
+  UI.user_error!('Upload-only settings required.') unless options['skip_submission'] == true && options['skip_waiting_for_build_processing'] == true && options['distribute_external'] == false && options['notify_external_testers'] == false
+  package = options[package_key]
+  digest = ENV.fetch('RESALE_PACKAGE_SHA256')
+  UI.user_error!('Pinned regular signed export required.') unless package.start_with?('/') && File.file?(package) && !File.symlink?(package) && digest.match?(/\A[0-9a-f]{64}\z/) && Digest::SHA256.file(package).hexdigest == digest
+  UI.user_error!('Exact Team required.') unless ENV['TEAMID'] == 'N8K8G6QA36'
+  key = ENV.fetch('FASTLANE_KEY').gsub('\\n', "\n").strip
+  key = Base64.strict_decode64(key) unless key.include?('-----BEGIN PRIVATE KEY-----')
+  # Current sanctioned CI credentials remain in memory only, never command-line args.
+  api_key = app_store_connect_api_key(key_id: ENV.fetch('FASTLANE_KEY_ID'), issuer_id: ENV.fetch('FASTLANE_ISSUER_ID'), key_content: key, duration: 1200, in_house: false)
+  upload_to_testflight(**options.transform_keys(&:to_sym), api_key: api_key)
+end

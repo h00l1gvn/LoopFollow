@@ -1,0 +1,42 @@
+{
+  "schema": "ResaleBurrow-signed-cache-2",
+  "complete": true,
+  "repository": "h00l1gvn/resale-burrow-native",
+  "source_sha": "1162d8a1f4fdda1c2678220c9102f9c03ab48c33",
+  "approved_families": [
+    "ios"
+  ],
+  "exports": [
+    {
+      "family": "ios",
+      "asc_id": "6819601040",
+      "bundle_id": "com.julienbell.ResaleBurrow",
+      "version": "0.1.0",
+      "build": "1",
+      "distribution": "app-store",
+      "name": "ResaleBurrow-ios-0.1.0-1.ipa",
+      "asset_id": "REPLACE_ACTUAL_PRIVATE_ASSET_ID",
+      "bytes": "REPLACE_ACTUAL_BYTE_COUNT_INTEGER",
+      "sha256": "REPLACE_ACTUAL_VALIDATED_IPA_SHA256",
+      "export_ci": {
+        "repository": "h00l1gvn/LoopFollow",
+        "run_id": "37441682870",
+        "head_sha": "REPLACE_ACTUAL_REVIEWED_IOS_EXPORT_COMMIT",
+        "status": "completed",
+        "conclusion": "failure",
+        "event": "push"
+      },
+      "recovery": {
+        "authenticated_recovery_verified": true,
+        "archive_command_succeeded": true,
+        "export_command_succeeded": true,
+        "signed_local_validation_passed": true,
+        "export_sha256": "REPLACE_SAME_VALIDATED_IPA_SHA256",
+        "recovery_receipt_sha256": "REPLACE_ACTUAL_AUTHENTICATED_RECOVERY_RECEIPT_SHA256",
+        "local_validation_receipt_sha256": "REPLACE_ACTUAL_CORRECTED_LOCAL_PASS_RECEIPT_SHA256",
+        "ci_failure_stage": "post_export_validation",
+        "validation_failure_resolved_locally": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+name: ResaleBurrow exact cached upload only
+on:
+  workflow_dispatch:
+    inputs:
+      family:
+        type: choice
+        options: [ios, macos, tvos]
+        required: true
+      release_id:
+        type: string
+        required: true
+      manifest_asset_id:
+        type: string
+        required: true
+      manifest_sha256:
+        type: string
+        required: true
+      manifest_bytes:
+        type: string
+        required: true
+      export_delivery_sha:
+        type: string
+        required: true
+      export_run_id:
+        type: string
+        required: true
+      execute_reviewed_upload:
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-upload-${{ inputs.family }}-0.1.0-1
+  cancel-in-progress: false
+jobs:
+  upload:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'h00l1gvn/LoopFollow' && github.actor == 'h00l1gvn'
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify reviewed checkout and dependency pins before installing
+        run: |
+          python - <<'PYCODE'
+          import os, pathlib, sys
+          sys.path.insert(0, 'Scripts/resale/upload-prep')
+          import cached_upload
+          cached_upload.ci_gate(os.environ, pathlib.Path.cwd())
+          PYCODE
+      - name: Install exact existing delivery dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale/upload-prep/upload-requirements.txt
+          bundle config set --local path "$RUNNER_TEMP/resale-upload-gems"
+          bundle install --jobs 4 --retry 0
+      - name: Offline guards before credentials
+        run: |
+          python -m unittest discover -s Scripts/resale/upload-prep -p 'test_cached_upload.py' -v
+          ruby -c Scripts/resale/upload-prep/UploadFastfile
+          ruby Scripts/resale/upload-prep/test_upload_fastfile.rb
+          node --test Scripts/resale/upload-prep/test_protect_resale_artifact.cjs
+      - name: GET exact private cache, validate and optionally upload once
+        env:
+          FAMILY: ${{ inputs.family }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          MANIFEST_ASSET_ID: ${{ inputs.manifest_asset_id }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+          MANIFEST_BYTES: ${{ inputs.manifest_bytes }}
+          EXPORT_DELIVERY_SHA: ${{ inputs.export_delivery_sha }}
+          EXPORT_RUN_ID: ${{ inputs.export_run_id }}
+          EXECUTE_REVIEWED_UPLOAD: ${{ inputs.execute_reviewed_upload }}
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-upload-private"
+          args=()
+          if [[ "$EXECUTE_REVIEWED_UPLOAD" == 'true' ]]; then args+=(--execute-reviewed-upload); fi
+          python Scripts/resale/upload-prep/cached_upload.py --family "$FAMILY" --release-id "$RELEASE_ID" --manifest-asset-id "$MANIFEST_ASSET_ID" --manifest-sha256 "$MANIFEST_SHA256" --manifest-bytes "$MANIFEST_BYTES" --source 1162d8a1f4fdda1c2678220c9102f9c03ab48c33 --export-delivery "$EXPORT_DELIVERY_SHA" --export-run "$EXPORT_RUN_ID" --work-dir "$RUNNER_TEMP/resale-upload-private/work" --tooling-dir "$GITHUB_WORKSPACE" "${args[@]}" > "$RUNNER_TEMP/resale-upload-private/driver.log" 2>&1
+      - name: Protect private diagnostics and authenticated result only
+        if: always()
+        env:
+          FAMILY: ${{ inputs.family }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-upload-private" "$RUNNER_TEMP/resale-upload-encrypted"
+          # Cache contains only exports/manifest/intent/results; no archive or credentials.
+          # Diagnostics are archived separately only in this RSA-wrapped encrypted artifact.
+          tar -czf "$RUNNER_TEMP/resale-upload-private.tar.gz" -C "$RUNNER_TEMP" resale-upload-private
+          printf '%s\n' '{"source_sha":"1162d8a1f4fdda1c2678220c9102f9c03ab48c33","recipient_spki_sha256":"62d6dc6cd0253c7d427f63fbadd9953247a6312146df856689955371cd3e6358"}' > "$RUNNER_TEMP/resale-upload-scope.json"
+          node Scripts/resale/upload-prep/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-upload-private.tar.gz" "$RUNNER_TEMP/resale-upload-encrypted/upload.gcm" "$RUNNER_TEMP/resale-upload-encrypted/upload-envelope.json" Scripts/resale/upload-prep/resale-recipient-public.pem "$RUNNER_TEMP/resale-upload-scope.json" "$FAMILY" "$GITHUB_RUN_ID"
+      - name: Preserve encrypted diagnostics only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ResaleBurrow-protected-upload-${{ inputs.family }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-upload-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Remove ephemeral plaintext
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/resale-upload-private" "$RUNNER_TEMP/resale-upload-private.tar.gz" "$RUNNER_TEMP/resale-upload-scope.json"
