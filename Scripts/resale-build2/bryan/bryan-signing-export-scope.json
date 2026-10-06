@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "team": "N8K8G6QA36",
+  "group": "group.com.julienbell.ResaleBurrow",
+  "source_repository": "h00l1gvn/resale-burrow-native",
+  "source_sha": "038c9e2b61b5b6c28355c478c883edee8372e330",
+  "tooling_sha": "6e6f97a1b18781c7ffc6cf620f15293c29515fc5",
+  "match_repository": "h00l1gvn/Match-Secrets",
+  "match_branch": "master",
+  "version": "0.1.0",
+  "build": "2",
+  "targets": [
+    {
+      "target": "ResaleBurrowIOS",
+      "bundle_id": "com.julienbell.ResaleBurrow",
+      "platform": "iOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_ADHOC",
+      "primary_asc": true,
+      "minimum_os": "17.0",
+      "production_push_key": "aps-environment"
+    },
+    {
+      "target": "ResaleBurrowIOSWidgets",
+      "bundle_id": "com.julienbell.ResaleBurrow.widgets",
+      "platform": "iOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_ADHOC",
+      "primary_asc": false,
+      "minimum_os": "17.0",
+      "production_push_key": null
+    },
+    {
+      "target": "ResaleBurrowWatch",
+      "bundle_id": "com.julienbell.ResaleBurrow.watch",
+      "platform": "watchOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_ADHOC",
+      "primary_asc": false,
+      "minimum_os": "10.0",
+      "production_push_key": "aps-environment"
+    },
+    {
+      "target": "ResaleBurrowWatchWidgets",
+      "bundle_id": "com.julienbell.ResaleBurrow.watch.widgets",
+      "platform": "watchOS",
+      "family": "ios",
+      "scheme": "ResaleBurrowIOS",
+      "profile_type": "IOS_APP_ADHOC",
+      "primary_asc": false,
+      "minimum_os": "10.0",
+      "production_push_key": null
+    },
+    {
+      "target": "ResaleBurrowMac",
+      "bundle_id": "com.julienbell.ResaleBurrow.mac",
+      "platform": "macOS",
+      "family": "macos",
+      "scheme": "ResaleBurrowMac",
+      "profile_type": "MAC_APP_STORE",
+      "primary_asc": true,
+      "minimum_os": "13.0",
+      "production_push_key": "com.apple.developer.aps-environment"
+    },
+    {
+      "target": "ResaleBurrowMacWidgets",
+      "bundle_id": "com.julienbell.ResaleBurrow.mac.widgets",
+      "platform": "macOS",
+      "family": "macos",
+      "scheme": "ResaleBurrowMac",
+      "profile_type": "MAC_APP_STORE",
+      "primary_asc": false,
+      "minimum_os": "13.0",
+      "production_push_key": null
+    },
+    {
+      "target": "ResaleBurrowTV",
+      "bundle_id": "com.julienbell.ResaleBurrow.tv",
+      "platform": "tvOS",
+      "family": "tvos",
+      "scheme": "ResaleBurrowTV",
+      "profile_type": "TVOS_APP_STORE",
+      "primary_asc": true,
+      "minimum_os": "17.0",
+      "production_push_key": null
+    }
+  ],
+  "match_material_commit": "4d7f92fe5c81c32823e8ace5aca316ee98c8a53e",
+  "recipient_spki_sha256": "62d6dc6cd0253c7d427f63fbadd9953247a6312146df856689955371cd3e6358",
+  "signing_delivery": "bryan-ad-hoc-export-only",
+  "profile_manifest_required": true,
+  "certificates": {
+    "distribution": {
+      "certificate_id": "9K5USY2222",
+      "sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772",
+      "type": "DISTRIBUTION",
+      "expires_at": "2027-09-16T02:46:02+00:00",
+      "existing_private_key_challenge_verified": true,
+      "exact_current_apple_certificate_verified": true
+    },
+    "mac_app_distribution": {
+      "certificate_id": "9K5USY2222",
+      "sha256": "83418f42dfecf6e1709ea5528fb0f4f42b5df1189365147dc86747ace39de772",
+      "type": "DISTRIBUTION",
+      "expires_at": "2027-09-16T02:46:02+00:00",
+      "existing_private_key_challenge_verified": true,
+      "exact_current_apple_certificate_verified": true
+    },
+    "mac_installer_distribution": {
+      "certificate_id": "WBR8H2GCGZ",
+      "sha256": "99d5b88d90d30283082420947296a6afa8e784cd5df9781c9eade2f7720f4df2",
+      "type": "MAC_INSTALLER_DISTRIBUTION",
+      "expires_at": "2027-09-27T22:42:49+00:00",
+      "existing_private_key_challenge_verified": true,
+      "exact_current_apple_certificate_verified": true
+    }
+  },
+  "credential_audit_run_id": 37438300955,
+  "display_name": "Re$Burrow",
+  "release_dispatched": false,
+  "final_artwork_owner_approved": true,
+  "source_frozen": true,
+  "distribution": "ad-hoc",
+  "delivery_lane": "bryan-ad-hoc",
+  "profile_material_mode": "native-adhoc-get-with-immutable-match-certificates",
+  "adhoc_native_profiles": [
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow",
+      "native_profile_id": "98G99PC3S9",
+      "name": "ResaleBurrow Bryan Build2 Ad Hoc 2026-10-06",
+      "uuid": "89cc16a3-476a-474a-9ab3-fbdbdde31d17",
+      "sha256": "eb8d1c019498404d64fea62e783a0eaa5199661a8eef5e0dc5f23682cce36d3f",
+      "profile_type": "IOS_APP_ADHOC",
+      "native_readback_verified": true,
+      "owner_private_phone_membership_verified_by_exact_cms_hash": true
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.watch",
+      "native_profile_id": "B7MA4B2VH5",
+      "name": "ResaleBurrow Watch Bryan Build2 Ad Hoc 2026-10-06",
+      "uuid": "445034ad-da7e-48af-a726-4d99530aa5c8",
+      "sha256": "cb1868f4c96d9b988c71281b4c7eb554cbb3d4477509421f4b270d4b7f85efc6",
+      "profile_type": "IOS_APP_ADHOC",
+      "native_readback_verified": true,
+      "owner_private_phone_membership_verified_by_exact_cms_hash": true
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.widgets",
+      "native_profile_id": "M7378SUWRA",
+      "name": "ResaleBurrow iOS Widgets Bryan Ad Hoc 2026-10-06",
+      "uuid": "883d7efb-cabe-4be2-b2a3-43e00886c052",
+      "sha256": "33386d1ac15b71a00f3ebfa33758c4497fb5fc7632fbf1fee9977849757a902d",
+      "profile_type": "IOS_APP_ADHOC",
+      "native_readback_verified": true,
+      "owner_private_phone_membership_verified_by_exact_cms_hash": true
+    },
+    {
+      "bundle_id": "com.julienbell.ResaleBurrow.watch.widgets",
+      "native_profile_id": "UB47QM5B83",
+      "name": "ResaleBurrow Watch Widgets Bryan Ad Hoc 2026-10-06",
+      "uuid": "eb951d40-2463-4ecc-a96f-3ccf8c11ac67",
+      "sha256": "9c21a0178507b2c76edf8cf6888a8df802da39c7044c55cf5854ddabc9040f1b",
+      "profile_type": "IOS_APP_ADHOC",
+      "native_readback_verified": true,
+      "owner_private_phone_membership_verified_by_exact_cms_hash": true
+    }
+  ],
+  "watch_hardware_eligibility_verified": false
+}
