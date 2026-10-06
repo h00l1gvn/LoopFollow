@@ -2,6 +2,7 @@ import base64
 import importlib.util
 import json
 import os
+import subprocess
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -25,6 +26,19 @@ class Opener:
         return Response(next(self.values))
 
 class Guards(unittest.TestCase):
+    def test_workflow_yaml_syntax_and_only_owned_audit_branch(self):
+        workflow=Path(__file__).with_name('resale-get-only-preflight.yml')
+        if not workflow.exists(): workflow=Path(__file__).parents[2]/'.github/workflows/resale-get-only-preflight.yml'
+        result=subprocess.run(['ruby','-ryaml','-rjson','-e','puts JSON.generate(YAML.load(File.read(ARGV[0])))',str(workflow)],capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,'Workflow YAML must parse before a push')
+        data=json.loads(result.stdout)
+        triggers=data.get('on') or data.get('true')
+        self.assertEqual(triggers['push']['branches'],['codex/resale-burrow-get-only-preflight'])
+        self.assertEqual(data['permissions'],{'contents':'read'})
+        self.assertEqual(list(data['jobs']),['audit'])
+        self.assertNotIn('pull_request',triggers)
+        self.assertNotIn('pull_request_target',triggers)
+
     def test_only_get_and_owned_host(self):
         opener = Opener([{'data':[]}])
         client = audit.ReadClient('https://api.appstoreconnect.apple.com', 'synthetic', opener)
