@@ -39,7 +39,12 @@ jobs:
         run: |
           umask 077
           mkdir -p "$RUNNER_TEMP/resale-build2-get"
-          python Scripts/resale-build2/diagnose_three_push_profiles.py --scope Scripts/resale-build2/three-push-profile-scope.json --report "$RUNNER_TEMP/resale-build2-get/profile-capability-audit.json" > "$RUNNER_TEMP/resale-build2-get/audit-stdout.log" 2> "$RUNNER_TEMP/resale-build2-get/audit-stderr.log"
+          if python Scripts/resale-build2/diagnose_three_push_profiles.py --scope Scripts/resale-build2/three-push-profile-scope.json --report "$RUNNER_TEMP/resale-build2-get/profile-capability-audit.json" > "$RUNNER_TEMP/resale-build2-get/audit-stdout.log" 2> "$RUNNER_TEMP/resale-build2-get/audit-stderr.log"; then
+            cat "$RUNNER_TEMP/resale-build2-get/audit-stdout.log"
+          else
+            cat "$RUNNER_TEMP/resale-build2-get/audit-stdout.log"
+            exit 1
+          fi
       - name: Protect audit evidence without credentials or source
         if: always()
         run: |
@@ -49,7 +54,7 @@ jobs:
             printf '%s\n' '{"audit_completed":false,"account_mutations":0,"signed":false,"uploaded":false,"startup_or_audit_failed":true}' > "$RUNNER_TEMP/resale-build2-get/incomplete.json"
           fi
           tar -czf "$RUNNER_TEMP/resale-build2-get.tar.gz" -C "$RUNNER_TEMP" resale-build2-get
-          node Scripts/resale-build2/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-build2-get.tar.gz" "$RUNNER_TEMP/resale-build2-encrypted/audit.gcm" "$RUNNER_TEMP/resale-build2-encrypted/audit-envelope.json" Scripts/resale-build2/resale-recipient-public.pem Scripts/resale-build2/signing-push-audit-envelope-scope.json ios "$GITHUB_RUN_ID"
+          node Scripts/resale-build2/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-build2-get.tar.gz" "$RUNNER_TEMP/resale-build2-encrypted/audit.gcm" "$RUNNER_TEMP/resale-build2-encrypted/audit-envelope.json" Scripts/resale-build2/resale-recipient-public.pem Scripts/resale-build2/three-push-profile-envelope-scope.json ios "$GITHUB_RUN_ID"
       - name: Preserve encrypted GET evidence only
         if: always()
         uses: actions/upload-artifact@v6
