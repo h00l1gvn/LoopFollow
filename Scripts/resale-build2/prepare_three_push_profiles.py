@@ -5,7 +5,7 @@ No certificates, devices, deletions, unrelated capability changes, Match writes,
 keychain, build or upload. Unknown POST stops. GET readback precedes acceptance.
 """
 from __future__ import annotations
-import argparse,base64,datetime,hashlib,json,os,pathlib,re
+import argparse,base64,datetime,hashlib,json,os,pathlib,re,time
 from urllib.parse import quote,urlencode
 from urllib.request import Request
 from urllib.error import HTTPError,URLError
@@ -90,8 +90,16 @@ def prepare(client,scope,output,now=None,decoder=audit.decode_profile):
         named=profile_rows(client,row);profile_action='reused'
         if not named:
             write(output/(prefix+'-profile-intent.json'),{'recorded_at':now.isoformat(),'action':'create_exact_build2_store_profile_existing_cert_only','body':profile_request(row),'unknown_outcome_requires_review':True})
-            created=client.create_profile(row);c.require(isinstance(created.get('id'),str) and re.fullmatch('[A-Za-z0-9_-]{1,80}',created['id']),'created_profile_resource_id_missing_stop');named=profile_rows(client,row)
-            c.require(len(named)==1 and named[0].get('id')==created.get('id'),'profile_creation_readback_missing_or_changed_stop');profile_action='created'
+            created=client.create_profile(row);c.require(isinstance(created.get('id'),str) and re.fullmatch('[A-Za-z0-9_-]{1,80}',created['id']),'created_profile_resource_id_missing_stop');profile_action='created'
+            # Apple profile grants can settle after the successful POST. Only GET
+            # this same owned relationship/resource; never repeat or replace POST.
+            for readback_attempt in range(4):
+                if readback_attempt:time.sleep(5)
+                named=profile_rows(client,row)
+                c.require(len(named)==1 and named[0].get('id')==created.get('id'),'profile_creation_readback_missing_or_changed_stop')
+                try:checked_profile(named[0],row,cert,now,decoder);break
+                except c.GateError as error:
+                    if str(error)!='created_build2_profile_required_grants_missing' or readback_attempt==3:raise
         result,raw=checked_profile(named[0],row,cert,now,decoder)
         if profile_action=='created' and created.get('attributes',{}).get('profileContent') is not None:c.require(raw==base64.b64decode(created['attributes']['profileContent'],validate=True),'profile_creation_readback_content_changed')
         extension='.provisionprofile' if row['profile_type']=='MAC_APP_STORE' else '.mobileprovision';path=output/(row['target']+extension)

@@ -46,6 +46,26 @@ class Guards(unittest.TestCase):
             resource=original(row);post=copy.deepcopy(resource);post['attributes']['profileState']='INVALID';return post
         client.create_profile=create;result=self.run_prepared(client)
         self.assertTrue(result['complete']);self.assertTrue(all(r['native_readback_verified'] for r in result['profiles']));self.assertEqual(len(client.post_calls),6)
+    def test_created_profile_grants_settle_using_get_only_no_second_post(self):
+        client=Fake();original=client.collection;counts={}
+        def read(path):
+            rows=original(path)
+            if '/profiles?' in path and rows:
+                counts[path]=counts.get(path,0)+1
+                if counts[path]==1:
+                    rows=copy.deepcopy(rows);rows[0]['attributes']['profileState']='INVALID'
+            return rows
+        client.collection=read
+        with patch.object(p.time,'sleep') as delay:result=self.run_prepared(client)
+        self.assertTrue(result['complete']);self.assertEqual(len(client.post_calls),6);self.assertEqual(delay.call_count,3)
+    def test_unsettled_created_profile_stops_after_bounded_gets_without_repost(self):
+        client=Fake();original=client.create_profile
+        def create(row):
+            resource=original(row);resource['attributes']['profileState']='INVALID';return resource
+        client.create_profile=create
+        with patch.object(p.time,'sleep') as delay:
+            with self.assertRaisesRegex(p.c.GateError,'required_grants'):self.run_prepared(client)
+        self.assertEqual(len(client.post_calls),2);self.assertEqual(delay.call_count,3)
     def test_current_exact_names_reuse_without_any_posts(self):
         client=Fake(True);self.run_prepared(client);self.assertEqual(client.post_calls,[])
     def test_unknown_capability_post_stops_once_keeps_intent(self):
