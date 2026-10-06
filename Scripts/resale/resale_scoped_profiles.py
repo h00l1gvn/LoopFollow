@@ -41,6 +41,12 @@ def profile_path(target):
     extension='.provisionprofile' if target['profile_type']=='MAC_APP_STORE' else '.mobileprovision'
     return 'profiles/appstore/AppStore_'+target['bundle_id']+extension
 
+def profile_group_permission(target,groups):
+    if groups==[GROUP]:return True
+    # Exact native Mac CMS PAQRP4RMB6 includes the literal group plus this
+    # same-Team permission wildcard. Signed binary entitlements stay literal.
+    return target.get('profile_type')=='MAC_APP_STORE' and isinstance(groups,list) and len(groups)==2 and set(groups)=={GROUP,TEAM+'.*'}
+
 def create_request(target, native_bundle_id):
     require(target.get('bundle_id') in EXPECTED and target.get('profile_type')==EXPECTED[target['bundle_id']],'Unapproved profile target.')
     require(re.fullmatch(r'[A-Za-z0-9_-]{1,80}',native_bundle_id or ''),'Native bundle resource ID invalid.')
@@ -87,7 +93,7 @@ def validate_profile(resource, target, certificate_der, decoder=audit.decode_pro
     profile=decoder(content);require(isinstance(profile,dict),'Signed profile content is unreadable.')
     ent=profile.get('Entitlements',{})
     require(profile.get('TeamIdentifier')==[TEAM] and profile.get('ApplicationIdentifierPrefix')==[TEAM],'Profile Team/prefix differs.')
-    require(ent.get('com.apple.developer.team-identifier')==TEAM and ent.get('com.apple.security.application-groups')==[GROUP],'Profile Team/AppGroup entitlement differs.')
+    require(ent.get('com.apple.developer.team-identifier')==TEAM and profile_group_permission(target,ent.get('com.apple.security.application-groups')),'Profile Team/AppGroup entitlement differs.')
     require('ProvisionedDevices' not in profile and profile.get('ProvisionsAllDevices') is not True,'Profile is not an App Store profile.')
     require(profile.get('DeveloperCertificates')==[certificate_der],'Profile does not contain only the verified existing distribution certificate.')
     uuid=profile.get('UUID');require(isinstance(uuid,str) and re.fullmatch(r'[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}',uuid),'Profile UUID invalid.')

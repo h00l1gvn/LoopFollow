@@ -29,6 +29,14 @@ def decode(content):
     name=base64.b64decode(content).decode();target=next(t for t in SCOPE['targets'] if t['target']==name)
     return {'UUID':'12345678-1234-1234-1234-123456789ABC','Name':profiles.profile_name(target),'TeamIdentifier':[profiles.TEAM],'ApplicationIdentifierPrefix':[profiles.TEAM],'ExpirationDate':datetime.now(timezone.utc)+timedelta(days=2),'DeveloperCertificates':[b'synthetic DER'],'Entitlements':{'application-identifier':profiles.TEAM+'.'+target['bundle_id'],'com.apple.developer.team-identifier':profiles.TEAM,'com.apple.security.application-groups':[profiles.GROUP],'get-task-allow':False}}
 class Guards(unittest.TestCase):
+    def test_exact_observed_mac_permission_superset_only_and_ios_remains_literal(self):
+        target=next(t for t in SCOPE['targets'] if t['target']=='ResaleBurrowMac');r=resource(target);v=decode(r['attributes']['profileContent']);v['Entitlements'].pop('application-identifier');v['Entitlements']['com.apple.application-identifier']=profiles.TEAM+'.'+target['bundle_id'];v['Entitlements']['com.apple.security.application-groups']=[profiles.GROUP,profiles.TEAM+'.*']
+        row,_=profiles.validate_profile(r,target,b'synthetic DER',lambda _:v);self.assertTrue(row['verified'])
+        for groups in ([profiles.TEAM+'.*'],[profiles.GROUP,'OTHERTEAM.*'],[profiles.GROUP,profiles.TEAM+'.*','group.other'],[profiles.GROUP,profiles.GROUP]):
+            v['Entitlements']['com.apple.security.application-groups']=groups
+            with self.assertRaises(audit.AuditError):profiles.validate_profile(r,target,b'synthetic DER',lambda _:v)
+        ios=SCOPE['targets'][0];v=decode(resource(ios)['attributes']['profileContent']);v['Entitlements']['com.apple.security.application-groups']=[profiles.GROUP,profiles.TEAM+'.*']
+        with self.assertRaises(audit.AuditError):profiles.validate_profile(resource(ios),ios,b'synthetic DER',lambda _:v)
     def test_scope_cannot_add_target_change_certificate_or_profile_type(self):
         for mutate in (lambda s:s['targets'].append(dict(s['targets'][0])),lambda s:s['targets'][0].update(profile_type='IOS_APP_ADHOC'),lambda s:s['certificates']['distribution'].update(certificate_id='OTHER'),lambda s:s['targets'][0].update(target='../unrelated')):
             changed=copy.deepcopy(SCOPE);mutate(changed)
