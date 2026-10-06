@@ -27,7 +27,7 @@ jobs:
           python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale-build2/audit-requirements.txt
       - name: Offline owned-scope and GET guards before API access
         run: |
-          python -m unittest discover -s Scripts/resale-build2 -p 'test_three_push_profiles.py'
+          python -m unittest discover -s Scripts/resale-build2 -p 'test_three_profile_diagnostic.py'
           python -m unittest discover -s Scripts/resale-build2 -p 'test_build2_profile_audit.py'
           node --test Scripts/resale-build2/test_protect_resale_artifact.cjs
       - name: GET exact owned registrations, capabilities and Store profiles
