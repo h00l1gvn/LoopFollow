@@ -10,6 +10,13 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 import cached_upload as c
 
+def workflow_text():
+    # Preparation uses a flat reviewed bundle; CI stores workflow at repo root.
+    candidates=(c.HERE/'resale-upload-cached.yml',c.HERE.parents[2]/'.github/workflows/resale-upload-cached.yml')
+    for path in candidates:
+        if path.is_file() and not path.is_symlink():return path.read_text()
+    raise FileNotFoundError('Reviewed workflow absent from preparation and CI layouts')
+
 class Response:
     status=200
     def __init__(self,raw):self.raw=raw
@@ -165,7 +172,7 @@ class Tests(unittest.TestCase):
     def test_push_registration_cannot_reach_executor(self):
         with self.assertRaisesRegex(c.Invalid,'owner_ci'):
             c.ci_gate({'GITHUB_ACTIONS':'true','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':c.TOOLING_REPO,'GITHUB_ACTOR':'h00l1gvn'},Path('/tmp'))
-        s=(c.HERE/'resale-upload-cached.yml').read_text()
+        s=workflow_text()
         self.assertIn('branches: [codex/resale-burrow-cached-upload]',s)
         self.assertIn('paths: [.github/workflows/resale-upload-cached.yml]',s)
         self.assertEqual(sum(line.startswith('    if:') for line in s.splitlines()),1)
@@ -178,7 +185,7 @@ class Tests(unittest.TestCase):
         s=(c.HERE/'UploadFastfile').read_text();self.assertEqual(s.count('upload_to_testflight('),1)
         for forbidden in ['build_app(', 'match(', 'deliver(', 'pilot(', 'groups:', 'changelog:']:self.assertNotIn(forbidden,s)
     def test_workflow_default_off_concurrency_and_encrypted_only(self):
-        s=(c.HERE/'resale-upload-cached.yml').read_text();self.assertIn('default: false',s);self.assertIn('cancel-in-progress: false',s);self.assertIn('resale-burrow-upload-${{ inputs.family }}-0.1.0-1',s)
+        s=workflow_text();self.assertIn('default: false',s);self.assertIn('cancel-in-progress: false',s);self.assertIn('resale-burrow-upload-${{ inputs.family }}-0.1.0-1',s)
         self.assertNotIn('xcodebuild',s);self.assertNotIn('MATCH_PASSWORD',s);self.assertNotIn('native-source',s);self.assertIn('path: ${{ runner.temp }}/resale-upload-encrypted/',s)
 
 if __name__=='__main__':unittest.main()
