@@ -1,0 +1,64 @@
+name: ResaleBurrow build2 exact three Push profile updates
+on:
+  push:
+    branches: [codex/resale-burrow-build2-three-push-profiles]
+    paths: [.github/workflows/resale-build2-three-push-profiles.yml, Scripts/resale-build2/**]
+permissions:
+  contents: read
+concurrency:
+  group: resale-burrow-build2-three-push-profiles
+  cancel-in-progress: false
+jobs:
+  profiles:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/codex/resale-burrow-build2-three-push-profiles' && github.run_attempt == 1
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned public verification dependency
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale-build2/audit-requirements.txt
+      - name: Offline exact account-write and profile guards before API access
+        run: |
+          python -m unittest discover -s Scripts/resale-build2 -p 'test_three_push_profiles.py'
+          python -m unittest discover -s Scripts/resale-build2 -p 'test_build2_profile_audit.py'
+          node --test Scripts/resale-build2/test_protect_resale_artifact.cjs
+      - name: Enable only three owned Push capabilities and verify new exact Store profiles
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-build2-three-push"
+          python Scripts/resale-build2/prepare_three_push_profiles.py --execute-reviewed-three-push-profiles --scope Scripts/resale-build2/three-push-profile-scope.json --output "$RUNNER_TEMP/resale-build2-three-push/profiles" > "$RUNNER_TEMP/resale-build2-three-push/grant-stdout.log" 2> "$RUNNER_TEMP/resale-build2-three-push/grant-stderr.log"
+      - name: Protect actual profile bytes and account outcome evidence
+        if: always()
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-build2-three-push" "$RUNNER_TEMP/resale-build2-three-push-encrypted"
+          if [ ! -f "$RUNNER_TEMP/resale-build2-three-push/profiles/three-push-profile-manifest.json" ]; then
+            printf '%s\n' '{"complete":false,"startup_or_grant_failed":true,"unknown_post_stop_no_retry":true,"app_built_or_uploaded":false}' > "$RUNNER_TEMP/resale-build2-three-push/incomplete.json"
+          fi
+          tar -czf "$RUNNER_TEMP/resale-build2-three-push.tar.gz" -C "$RUNNER_TEMP" resale-build2-three-push
+          node Scripts/resale-build2/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-build2-three-push.tar.gz" "$RUNNER_TEMP/resale-build2-three-push-encrypted/profiles.gcm" "$RUNNER_TEMP/resale-build2-three-push-encrypted/profiles-envelope.json" Scripts/resale-build2/resale-recipient-public.pem Scripts/resale-build2/three-push-profile-envelope-scope.json ios "$GITHUB_RUN_ID"
+      - name: Preserve encrypted profile and outcome evidence only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ResaleBurrow-build2-three-push-profiles-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-build2-three-push-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Clean private account evidence
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/resale-build2-three-push" "$RUNNER_TEMP/resale-build2-three-push.tar.gz"
