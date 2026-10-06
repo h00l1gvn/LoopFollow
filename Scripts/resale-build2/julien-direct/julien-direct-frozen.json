@@ -42,7 +42,7 @@
     },
     {
       "path": "julien-direct/prepare_julien_profiles.py",
-      "sha256": "0baa1099468a0ba4784f2e98c83fe426bfbf4930e749ea96887d1a6544f0deca"
+      "sha256": "e8335d53341f45fa86a3a15651efcee340d7ad62b7ca097686bdf64dfb6064f7"
     },
     {
       "path": "julien-direct/resale-build2-julien-direct.yml",
@@ -54,7 +54,7 @@
     },
     {
       "path": "julien-direct/test_prepare_julien_profiles.py",
-      "sha256": "f9b08cc8d89a233beaa9190be520e51c6615e0707fc1ef6fb54c87754b1d5e6e"
+      "sha256": "4124078b3396971464d670002d5302ab14376e7ceda122fe4d7c36cf208abf36"
     },
     {
       "path": "mac_payload_permissions.py",
@@ -125,8 +125,9 @@
       "sha256": "b199b01b4c0a54b80510bc3ecd2e194b9b7dd9357fa1a77cf87930ae8dca77d7"
     }
   ],
-  "focused_guards": 24,
+  "focused_guards": 25,
   "hardware_values_in_source": false,
   "new_profile_bound": 4,
-  "source_or_bryan_changed": false
+  "source_or_bryan_changed": false,
+  "supersedes_zero_intent_failed_run": 37519928839
 }

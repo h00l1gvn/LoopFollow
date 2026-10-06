@@ -97,6 +97,11 @@ class JulienClient(audit.ReadClient):
   except HTTPError as e:raise c.GateError('julien_post_http_'+str(e.code)+'_unknown_stop_no_retry') from None
   except (URLError,TimeoutError,OSError,ValueError):raise c.GateError('julien_post_unknown_stop_no_retry') from None
 
+def exact_bundle(found,row):
+ exact=[r for r in found if r.get('attributes',{}).get('identifier')==row['bundle_id']]
+ c.require(len(exact)==1 and exact[0].get('type')=='bundleIds' and exact[0].get('id')==row['native_bundle_resource_id'],'julien_bundle_resource_changed')
+ return exact[0]
+
 def named(client,row):
  found=[r for r in client.collection('/v1/bundleIds/'+row['native_bundle_resource_id']+'/profiles?limit=50') if r.get('attributes',{}).get('name')==row['name']]
  c.require(len(found)<=1,'julien_named_profile_ambiguous');return found
@@ -115,7 +120,9 @@ def prepare(client,s,private,output,now=None,decoder=decode_cms,certificate=ap.c
  # Preflight all four bundles/capabilities/names before any profile POST.
  for row in rows:
   found=client.collection('/v1/bundleIds?'+urlencode({'filter[identifier]':row['bundle_id'],'limit':50}))
-  c.require(len(found)==1 and found[0].get('attributes',{}).get('identifier')==row['bundle_id'] and found[0].get('id')==row['native_bundle_resource_id'],'julien_bundle_resource_changed')
+  exact=[r for r in found if r.get('attributes',{}).get('identifier')==row['bundle_id']]
+  write(out/(row['target']+'-bundle-preflight-private.json'),{'bundle_id':row['bundle_id'],'returned_count':len(found),'exact_identifier_count':len(exact),'expected_resource_match':len(exact)==1 and exact[0].get('id')==row['native_bundle_resource_id']})
+  exact_bundle(found,row)
   caps=client.collection('/v1/bundleIds/'+row['native_bundle_resource_id']+'/bundleIdCapabilities?limit=50');types={r.get('attributes',{}).get('capabilityType') for r in caps}
   c.require('APP_GROUPS' in types and (row['bundle_id'] not in c.PUSH or 'PUSH_NOTIFICATIONS' in types),'julien_existing_capability_required_no_mutation')
   found=named(client,row)

@@ -11,6 +11,14 @@ def doc(row):
  return {'Name':row['name'],'UUID':'12345678-1234-1234-1234-123456789abc','TeamIdentifier':[p.c.TEAM],'ApplicationIdentifierPrefix':[p.c.TEAM],'Entitlements':ent,'CreationDate':NOW,'ExpirationDate':NOW+datetime.timedelta(days=100),'DeveloperCertificates':[CERT],'ProvisionedDevices':[MEMBERS[k] for k in row['device_roles']]}
 def resource(row):return {'type':'profiles','id':'FIXTUREID','attributes':{'name':row['name'],'profileType':'IOS_APP_ADHOC','profileState':'ACTIVE','profileContent':base64.b64encode(b'fixture-cms').decode()}}
 class Guards(unittest.TestCase):
+ def test_exact_identifier_filter_ignores_related_bundles_but_not_wrong_resource(self):
+  row=scope()['new_profiles'][0]
+  found=[{'type':'bundleIds','id':row['native_bundle_resource_id'],'attributes':{'identifier':row['bundle_id']}},{'type':'bundleIds','id':'SIBLING','attributes':{'identifier':row['bundle_id']+'.widgets'}}]
+  self.assertEqual(p.exact_bundle(found,row)['id'],row['native_bundle_resource_id'])
+  wrong=copy.deepcopy(found);wrong[0]['id']='UNEXPECTED'
+  with self.assertRaises(p.c.GateError):p.exact_bundle(wrong,row)
+  found.append(copy.deepcopy(found[0]))
+  with self.assertRaises(p.c.GateError):p.exact_bundle(found,row)
  def test_exact_four_scope(self):self.assertEqual(len(p.validate_scope(scope())),4)
  def test_no_extra_target_or_stale_source(self):
   for field,value in [('source_sha','0'*40),('build','1'),('certificate_sha256','0'*64)]:
