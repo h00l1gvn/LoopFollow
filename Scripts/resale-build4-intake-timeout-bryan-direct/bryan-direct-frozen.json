@@ -71,7 +71,7 @@
     },
     {
       "path": "test_export_bryan_build4.py",
-      "sha256": "b0d4b7813d55706ac5e7a5c869536a321a5be5bf0443c57eda18a0800c833ba9"
+      "sha256": "b4dc1ae1c04a96d69c55bf5be349c0749524e82c8e24d6fc45d462629b946af8"
     },
     {
       "path": "test_protect_resale_artifact.cjs",

@@ -129,7 +129,11 @@ class Guards(unittest.TestCase):
                 with self.assertRaises(b.Error):b.export_plan(s,wrong,mat,src,work)
                 with patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(b.Error):b.export_plan(s,m,mat,src,work)
     def test_workflow_scope_and_no_upload_or_device_commands(self):
-        text=(pathlib.Path(b.__file__).parent/'resale-build4-intake-timeout-bryan-direct.yml').read_text()
+        helper_root = pathlib.Path(b.__file__).parent
+        workflow = helper_root / 'resale-build4-intake-timeout-bryan-direct.yml'
+        if not workflow.is_file():
+            workflow = helper_root.parents[1] / '.github/workflows/resale-build4-intake-timeout-bryan-direct.yml'
+        text = workflow.read_text()
         self.assertIn(b.SOURCE,text);self.assertIn('github.run_attempt == 1',text);self.assertIn('family: [ios]',text)
         self.assertIn('--mode restore',text);self.assertIn('--mode export',text)
         self.assertIn('bryan-direct-work',text);self.assertIn('bryan-signing-export-scope.json',text)
