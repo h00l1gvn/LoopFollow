@@ -1,0 +1,126 @@
+name: Re$Burrow build3 Mac and TV protected signed release exports
+on:
+  push:
+    branches: [codex/resale-icons-build3-protected-export]
+    paths: [.github/workflows/resale-icons-build3-protected-export.yml, Scripts/resale-icons-build3/**]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: resale-icons-build3-protected-export
+  cancel-in-progress: false
+jobs:
+  export:
+    if: github.event_name == 'workflow_dispatch' && github.actor == 'h00l1gvn' && github.repository == 'h00l1gvn/LoopFollow' && github.ref == 'refs/heads/codex/resale-icons-build3-protected-export' && github.run_attempt == 1
+    runs-on: macos-26
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [macos, tvos]
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: h00l1gvn/LoopFollow
+          ref: 6e6f97a1b18781c7ffc6cf620f15293c29515fc5
+          path: delivery-base
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: h00l1gvn/resale-burrow-native
+          ref: fde8e9dd60ba138157148d4c8837950739cda538
+          token: ${{ secrets.GH_PAT }}
+          path: native-source
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned delivery and audit dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r Scripts/resale-icons-build3/audit-requirements.txt
+          cd "$GITHUB_WORKSPACE/delivery-base"
+          bundle config set --local path "$RUNNER_TEMP/resale-gems"
+          bundle install --jobs 4 --retry 1
+          bundle exec ruby -r xcodeproj -e 'abort "Reviewed xcodeproj pin differs." unless Gem.loaded_specs.fetch("xcodeproj").version.to_s == "1.28.1"'
+      - name: Verify guards before accessing material
+        run: |
+          python -m unittest discover -s Scripts/resale-icons-build3 -p 'test_build2_*.py' -v
+          python -m unittest discover -s Scripts/resale-icons-build3 -p 'test_resale_export_validation.py' -v
+          ruby Scripts/resale-icons-build3/test_configure_build2_signing.rb
+          node --test Scripts/resale-icons-build3/test_protect_resale_artifact.cjs
+      - name: Verify immutable selected-artwork private source before material access
+        run: |
+          python - <<'PYVERIFY'
+          import json, pathlib, sys, subprocess
+          sys.path.insert(0, 'Scripts/resale-icons-build3')
+          import build2_contract as c
+          source=pathlib.Path('native-source')
+          review=json.loads(pathlib.Path('Scripts/resale-icons-build3/source-release-review.json').read_text())
+          if subprocess.check_output(['git','-C',str(source),'rev-parse','HEAD']).decode().strip()!=review['source_sha']:raise SystemExit('Exact frozen source HEAD required.')
+          if subprocess.check_output(['git','-C',str(source),'status','--porcelain']).strip():raise SystemExit('Exact clean curated source required.')
+          manifest=json.loads(pathlib.Path('Scripts/resale-icons-build3/source-files.json').read_text())
+          if set(subprocess.check_output(['git','-C',str(source),'ls-files']).decode().splitlines())!={r['path'] for r in manifest['files']}:raise SystemExit('Exact curated tracked file set required.')
+          c.validate_freeze(review,manifest,source)
+          print('Exact final Mac/TV build3 source and approved artwork match. No private payloads.')
+          PYVERIFY
+      - name: Prepare private runtime scope and ephemeral password
+        env:
+          MATCH_COMMIT: 4d7f92fe5c81c32823e8ace5aca316ee98c8a53e
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-private" "$RUNNER_TEMP/resale-encrypted"
+          python - <<'PY'
+          import json, os, pathlib, re, secrets
+          commit=os.environ['MATCH_COMMIT']
+          if not re.fullmatch(r'[0-9a-f]{40}',commit): raise SystemExit('Reviewed Match commit required.')
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'resale-private'
+          scope=json.loads(pathlib.Path('Scripts/resale-icons-build3/signing-export-scope.json').read_text())
+          if scope['match_material_commit']!=commit: raise SystemExit('Match commit must match reviewed scope before export.')
+          (root/'scope.json').write_text(json.dumps(scope))
+          (root/'p12-password').write_text(secrets.token_urlsafe(48))
+          PY
+      - name: GET-only scoped material restore
+        env:
+          TEAMID: ${{ secrets.TEAMID }}
+          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
+          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
+          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_COMMIT: 4d7f92fe5c81c32823e8ace5aca316ee98c8a53e
+          FAMILY: ${{ matrix.family }}
+        run: |
+          python Scripts/resale-icons-build3/restore_build2_material.py --scope "$RUNNER_TEMP/resale-private/scope.json" --family "$FAMILY" --output "$RUNNER_TEMP/resale-private/material" --p12-password-file "$RUNNER_TEMP/resale-private/p12-password" > "$RUNNER_TEMP/resale-private/restore.log" 2>&1
+      - name: Manual archive, export and exact-family validation
+        env:
+          FAMILY: ${{ matrix.family }}
+        run: |
+          python Scripts/resale-icons-build3/export_build2_family.py --scope "$RUNNER_TEMP/resale-private/scope.json" --manifest "$RUNNER_TEMP/resale-private/material/restore-manifest.json" --material-dir "$RUNNER_TEMP/resale-private/material" --source-dir "$GITHUB_WORKSPACE/native-source" --work-dir "$RUNNER_TEMP/resale-private/export-work" --p12-password-file "$RUNNER_TEMP/resale-private/p12-password" --bundle-gemfile "$GITHUB_WORKSPACE/delivery-base/Gemfile" --release-review Scripts/resale-icons-build3/source-release-review.json --source-manifest Scripts/resale-icons-build3/source-files.json > "$RUNNER_TEMP/resale-private/export-driver.log" 2>&1
+      - name: Protect archive/export/diagnostics, excluding private keys and material
+        if: always()
+        env:
+          FAMILY: ${{ matrix.family }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/resale-private/export-work" "$RUNNER_TEMP/resale-encrypted"
+          cp "$RUNNER_TEMP/resale-private/restore.log" "$RUNNER_TEMP/resale-private/export-work/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/resale-private/export-driver.log" "$RUNNER_TEMP/resale-private/export-work/" 2>/dev/null || true
+          tar -czf "$RUNNER_TEMP/resale-export.tar.gz" -C "$RUNNER_TEMP/resale-private" export-work
+          node Scripts/resale-icons-build3/protect_resale_artifact.cjs protect "$RUNNER_TEMP/resale-export.tar.gz" "$RUNNER_TEMP/resale-encrypted/export.gcm" "$RUNNER_TEMP/resale-encrypted/export-envelope.json" Scripts/resale-icons-build3/resale-recipient-public.pem Scripts/resale-icons-build3/signing-export-scope.json "$FAMILY" "$GITHUB_RUN_ID"
+      - name: Preserve encrypted signed result only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ResaleBurrow-icons-build3-protected-${{ matrix.family }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/resale-encrypted/
+          if-no-files-found: error
+          retention-days: 3
+      - name: Clean private source and ephemeral material
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/resale-private" "$RUNNER_TEMP/resale-export.tar.gz" "$GITHUB_WORKSPACE/native-source"
