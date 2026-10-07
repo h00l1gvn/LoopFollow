@@ -1,0 +1,686 @@
+{
+  "product_photos": 0,
+  "credentials_profiles_databases_logs_or_workspace_history": false,
+  "files": [
+    {
+      "path": ".github/workflows/apple-validate.yml",
+      "sha256": "fc9e9fbfe921ebec685915abba9c7575cbe478a8936cda915b7ef33a711f5902"
+    },
+    {
+      "path": "NATIVE_SOURCE_MANIFEST.json",
+      "sha256": "bcf28f308b2f19c2230096a27ba946eb7ae5fcd3ab838c82a7252a11f3c31f64"
+    },
+    {
+      "path": "apple/.github/workflows/apple-validate.yml",
+      "sha256": "fc9e9fbfe921ebec685915abba9c7575cbe478a8936cda915b7ef33a711f5902"
+    },
+    {
+      "path": "apple/.gitignore",
+      "sha256": "b8882d4430e3cd6c63387768571f8f9a73a114c9bc49c1674615388db5a9f5cf"
+    },
+    {
+      "path": "apple/App/BrandGuide.swift",
+      "sha256": "3be4d6d74bfbef7915ecba6b69505b434925b90c5123cefa03c5ee657de78dac"
+    },
+    {
+      "path": "apple/App/BurrowStore.swift",
+      "sha256": "c7f49f1f6d23f0ac8c75f62c3e0eb7c03eef78992e8c1acab023f07bc2a04480"
+    },
+    {
+      "path": "apple/App/Editors.swift",
+      "sha256": "665caf3b3d52420733de5d7daac47415a66edb595f987e28a8bd50a613b1a48e"
+    },
+    {
+      "path": "apple/App/IntakeAndTools.swift",
+      "sha256": "f02ecea7a04983904ecea3446e0699c5dfe93db5bc87b4ef0b31cd222ac1674f"
+    },
+    {
+      "path": "apple/App/Intents.swift",
+      "sha256": "180458273ec1e9fb272e9b2ae603ccd175ef1bc22408a6c6e3d51a34b46e9e28"
+    },
+    {
+      "path": "apple/App/ListingWidgetsWorkspace.swift",
+      "sha256": "3e918af0eb07812125ccbfe4a0d6fd85d5a8235fcd8a8b923936dda8cf5831fc"
+    },
+    {
+      "path": "apple/App/PlatformServices.swift",
+      "sha256": "fe97c711f55d8d3de49a420106a8e17fce68721003bcd9cf7b50682a0008772d"
+    },
+    {
+      "path": "apple/App/ResaleBurrowApp.swift",
+      "sha256": "21575b032249b7cf30f652569f271e5536b2c8456e941c48c51fdca373e3e429"
+    },
+    {
+      "path": "apple/App/ReviewedExtras.swift",
+      "sha256": "b5c1993bc500b72a459eda98334ecb1f0957d83aa7d5da674b6ac3f6cdf3edc7"
+    },
+    {
+      "path": "apple/App/SearchIndex.swift",
+      "sha256": "3fbeacd51a912fb2bcb4a27377de236a0c7b684dd265139f1d2490ebadd42a1f"
+    },
+    {
+      "path": "apple/App/Views.swift",
+      "sha256": "3db508044ca7d419d7fb40ed86209f5285c6db93732979da5ae881a6ea5dada2"
+    },
+    {
+      "path": "apple/App/WidgetBackgroundRefresh.swift",
+      "sha256": "be3c4d965b2e2d9836936a457299f2026ca2d8ae7cd6d82c177d933c252dbf7b"
+    },
+    {
+      "path": "apple/App/WorkflowStore.swift",
+      "sha256": "201c20d105c3df11b59ea8435e2351c17383ca616d2b56a9b52b60b5022d6785"
+    },
+    {
+      "path": "apple/App/WorkspaceAccess.swift",
+      "sha256": "4da5af24c57840b1ed9b124dadaf5f543a80c33a5290f4d6234447ec91f4dce0"
+    },
+    {
+      "path": "apple/App/Workspaces.swift",
+      "sha256": "6d8d482a3b8ccd27ae270fc710e47f04c25061862a42ff57ec28bec41a911086"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "sha256": "ad4710e50fa492b6c22136e9755df7a4b818b6ee381acb7c21e226476a5e694c"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ios-marketing-1024-1x.png",
+      "sha256": "f82419716b0978447297d3352ad823721768f2394abdc74b4f5fcb0317b36be4"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-20-1x.png",
+      "sha256": "4f6345af2e5a711d42b170d38507f03a78c98050eb9532db1860add3fae6074d"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-20-2x.png",
+      "sha256": "e5f797ec84bdeb0cc5ced46954fa046c5ec95a20aff351f2c48605036440f44c"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-29-1x.png",
+      "sha256": "66dfe350a58b2e1804500fc1c8d4c0ce821388635962d9ed15998066bc94291b"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-29-2x.png",
+      "sha256": "b3bf7b77610a400da6bf7c1c66203ba05caecd0f88ef914d8514c452bf8e0c45"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-40-1x.png",
+      "sha256": "e5f797ec84bdeb0cc5ced46954fa046c5ec95a20aff351f2c48605036440f44c"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-40-2x.png",
+      "sha256": "19fa7ad436a0fc6b2afb16c864928b6e221ba2713c5867716f758b1ec00b069c"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-76-1x.png",
+      "sha256": "beff4f25038b81ece7111d52ef7b621acbc78a02c0bfa283056d625f942b5fc0"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-76-2x.png",
+      "sha256": "240300d4304b7cce9fd5d1662c5d099eeb649e546c6792131cc5d4a845d220d2"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/ipad-83.5-2x.png",
+      "sha256": "5617602c51d17234efc3da9e6f4ce94bec6484bbb135413cb19164fa12e1b875"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-20-2x.png",
+      "sha256": "e5f797ec84bdeb0cc5ced46954fa046c5ec95a20aff351f2c48605036440f44c"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-20-3x.png",
+      "sha256": "e9b53e77a0c92e2cb5568ed58c1025a7897dc93e2066e009e13b389740bd7996"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-29-2x.png",
+      "sha256": "b3bf7b77610a400da6bf7c1c66203ba05caecd0f88ef914d8514c452bf8e0c45"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-29-3x.png",
+      "sha256": "309a325a92644fdccf1669278850c9340838bb1c75e0fc5545e8159535b7fc53"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-40-2x.png",
+      "sha256": "19fa7ad436a0fc6b2afb16c864928b6e221ba2713c5867716f758b1ec00b069c"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-40-3x.png",
+      "sha256": "2e5d992175d03ffb2222b236c62f5f9a185bad8d486e5d86ed9c8578a5154ac7"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-60-2x.png",
+      "sha256": "2e5d992175d03ffb2222b236c62f5f9a185bad8d486e5d86ed9c8578a5154ac7"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/iphone-60-3x.png",
+      "sha256": "310d5ab067db4650eee3c0cdca6797b254374555dcd1bb9e8686fd0289473765"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-128-1x.png",
+      "sha256": "9d6f98e6bd33031605744a1de30f95e4f291506b251b7b30fa1a94a13d2da208"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-128-2x.png",
+      "sha256": "9fe5009b80a16708d4767275964209d98792740f5078d5a2b78ff6787ba80b55"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-16-1x.png",
+      "sha256": "05744de7b47d6a0e4d5faacb15424d4c90e12213fe4fa0d09d9f1a9d2a6e2e96"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-16-2x.png",
+      "sha256": "8e5def8d9532a38727a1643e76df58cb8869711429c120df41892dbda6051508"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-256-1x.png",
+      "sha256": "9fe5009b80a16708d4767275964209d98792740f5078d5a2b78ff6787ba80b55"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-256-2x.png",
+      "sha256": "1806d2f36d61140e3858cfc6d64578860f828807defcfa285cd82f1a99f5949a"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-32-1x.png",
+      "sha256": "8e5def8d9532a38727a1643e76df58cb8869711429c120df41892dbda6051508"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-32-2x.png",
+      "sha256": "e87981fc7bbdfcb715015c879784866f2b14e599578d8c5ecb5c4a7bffe76dba"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-512-1x.png",
+      "sha256": "1806d2f36d61140e3858cfc6d64578860f828807defcfa285cd82f1a99f5949a"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/mac-512-2x.png",
+      "sha256": "51e8d2d4372ab31157a7ed092c7ab8cec77a28e9bc9c1d3b204b5e1e9981511b"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-appLauncher-40-2x.png",
+      "sha256": "e75cc8153117b73bff922dc88ce89cfd917cb07334efabd3e2d156429b79bce9"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-appLauncher-44-2x.png",
+      "sha256": "51dc091b0c8ea937928c8107b1210d52a5a357f5825a8b2ae471edf644a2453e"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-appLauncher-46-2x.png",
+      "sha256": "235e63095f82eb9fdb1f272eaddbd42df7fed4d9a479524b1fb162fd0550de44"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-appLauncher-50-2x.png",
+      "sha256": "f8f137586ed7ea9a4d5baf43c24083a9868f8bd9787109b0192ce47981a2c3ec"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-appLauncher-51-2x.png",
+      "sha256": "6b7843369a8223d04c3dbbeccffb868b6da71fd52b4bf9a2ce4c5fa74484a63b"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-appLauncher-54-2x.png",
+      "sha256": "c36a5b5540f3dd280334e6b50d390cb0c0da102af20464cb0b875f1a6291a83f"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-companionSettings-29-2x.png",
+      "sha256": "d005e1e7f9a66ad8e120f4ab63b12153dc14f2bab14d5d53f3dcbe5fb0ea9a01"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-companionSettings-29-3x.png",
+      "sha256": "7528dbfa74ccd2961d34e88e2b21e63b63917531b865c481997574de23ae4d5c"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-marketing.png",
+      "sha256": "4f0c2c11adefef1280ed797406472278a8abbfbea69004095fb798daeeb1c783"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-notificationCenter-24-2x.png",
+      "sha256": "8d8636c6a79ba48c2444d0f4294f5d705c9b0070d1ae896c08731b6bd4e79909"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-notificationCenter-27.5-2x.png",
+      "sha256": "eff5b365d3f673e2484ac34c56cc0d30a8bbdab3509638ad8fff5c319d0f0a37"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-quickLook-108-2x.png",
+      "sha256": "758ea677673c8ea4541c8cdf2da17b2e6f0198318ba140698e2b93eca35b1855"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-quickLook-86-2x.png",
+      "sha256": "63fcd9d647f0b6df2f94bb13cc4ef917f40abdf2306f970a17fe434b1b8d6534"
+    },
+    {
+      "path": "apple/Assets.xcassets/AppIcon.appiconset/watch-quickLook-98-2x.png",
+      "sha256": "1888cacb213ce0d00646aba4dd7a7cec2fbc94c293935b994425f9b278a389ad"
+    },
+    {
+      "path": "apple/Assets.xcassets/BurrowBrand.imageset/Contents.json",
+      "sha256": "4129e36a57374e6461c02d9cf30900e7e9e480e0568e70c3eb96cf1d9f543625"
+    },
+    {
+      "path": "apple/Assets.xcassets/BurrowBrand.imageset/brand.png",
+      "sha256": "e899a96691ad5e50f1ee24890ae87f7de04fadcc12c043bc6a824d2e248d7fce"
+    },
+    {
+      "path": "apple/Assets.xcassets/Contents.json",
+      "sha256": "e8e8ef4b27126d62305af321d12a6e64b866ca0b160f0f83efae90111f0ee576"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideAlerts.imageset/Contents.json",
+      "sha256": "26e456ffddd895f16d2031fac14b293b80bfb3eb7955fe331ff32ea3f0175f3e"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideAlerts.imageset/guide.png",
+      "sha256": "217321162a2b23a5410d3f591b7c79e13c8657bd4df84c86843531685f6c7bbf"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideIntake.imageset/Contents.json",
+      "sha256": "26e456ffddd895f16d2031fac14b293b80bfb3eb7955fe331ff32ea3f0175f3e"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideIntake.imageset/guide.png",
+      "sha256": "4956c1efa94052b7aba88ae6be4b322addb4070d67564069b4bb7d3016429ab4"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideInventory.imageset/Contents.json",
+      "sha256": "26e456ffddd895f16d2031fac14b293b80bfb3eb7955fe331ff32ea3f0175f3e"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideInventory.imageset/guide.png",
+      "sha256": "34af17833236bcb8d6938ca91c79f903f5380496027b4889b2c8a3d968d89ff1"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuidePickup.imageset/Contents.json",
+      "sha256": "26e456ffddd895f16d2031fac14b293b80bfb3eb7955fe331ff32ea3f0175f3e"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuidePickup.imageset/guide.png",
+      "sha256": "ef7b314ccaf8483f29b54daac7aec5e6c8af7a9e5ba7bb695d4b9ed4652034e0"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideResearch.imageset/Contents.json",
+      "sha256": "26e456ffddd895f16d2031fac14b293b80bfb3eb7955fe331ff32ea3f0175f3e"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideResearch.imageset/guide.png",
+      "sha256": "b0e72546e7f2d15c177965f8f0738490abeb45e9822507839be77079012f7ae4"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideShipping.imageset/Contents.json",
+      "sha256": "26e456ffddd895f16d2031fac14b293b80bfb3eb7955fe331ff32ea3f0175f3e"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideShipping.imageset/guide.png",
+      "sha256": "7ab172b0bf8926ba228224225399ccf0a8f52a6db0efbc54f679eed20a1cb1f6"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideSuccess.imageset/Contents.json",
+      "sha256": "26e456ffddd895f16d2031fac14b293b80bfb3eb7955fe331ff32ea3f0175f3e"
+    },
+    {
+      "path": "apple/Assets.xcassets/GuideSuccess.imageset/guide.png",
+      "sha256": "3610d3a045f95c8278c59a6a3388eb4741abfd49d40201c52a07920e77ce58d3"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon Large.imagestack/Back.imagestacklayer/Content.imageset/Contents.json",
+      "sha256": "c3087acd8887ea5ec8a1cf7f26b4c002f115c3de66b102f5b7dea17f9d5207ba"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon Large.imagestack/Back.imagestacklayer/Content.imageset/icon.png",
+      "sha256": "7445d40f1f10ee1e6af8d9a0c51abf2ea4db97903605da801ebf26e37d240ef1"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon Large.imagestack/Back.imagestacklayer/Contents.json",
+      "sha256": "e8e8ef4b27126d62305af321d12a6e64b866ca0b160f0f83efae90111f0ee576"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon Large.imagestack/Contents.json",
+      "sha256": "da810291f07f55fb4339d73ec8e64cd88ef2b075114c0b9b6ea2264bd48ffcd5"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon Large.imagestack/Front.imagestacklayer/Content.imageset/Contents.json",
+      "sha256": "c3087acd8887ea5ec8a1cf7f26b4c002f115c3de66b102f5b7dea17f9d5207ba"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon Large.imagestack/Front.imagestacklayer/Content.imageset/icon.png",
+      "sha256": "c3e395787e890f9070abd32431bc9965c31ac139ea40b0c7c6489e87eeed2945"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon Large.imagestack/Front.imagestacklayer/Contents.json",
+      "sha256": "e8e8ef4b27126d62305af321d12a6e64b866ca0b160f0f83efae90111f0ee576"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Back.imagestacklayer/Content.imageset/Contents.json",
+      "sha256": "81ef8b119ebea0386e5bd2b3d2ff4399f5b84a4c95ae55c04229f6e5bdb156ba"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Back.imagestacklayer/Content.imageset/icon-2x.png",
+      "sha256": "08643b9d387950a99e53660deef420a49916eb5592daf643ae440c9ceeb67a8f"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Back.imagestacklayer/Content.imageset/icon.png",
+      "sha256": "9a41fa91bfa198b639ed7378d233799e7ed5fbf193073bc309e693f2b737019d"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Back.imagestacklayer/Contents.json",
+      "sha256": "e8e8ef4b27126d62305af321d12a6e64b866ca0b160f0f83efae90111f0ee576"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Contents.json",
+      "sha256": "da810291f07f55fb4339d73ec8e64cd88ef2b075114c0b9b6ea2264bd48ffcd5"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Front.imagestacklayer/Content.imageset/Contents.json",
+      "sha256": "81ef8b119ebea0386e5bd2b3d2ff4399f5b84a4c95ae55c04229f6e5bdb156ba"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Front.imagestacklayer/Content.imageset/icon-2x.png",
+      "sha256": "68234e51563344f06d69bbaf6341e974f34ca201fc5e86dcb67c3581a788ddd7"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Front.imagestacklayer/Content.imageset/icon.png",
+      "sha256": "8d3b1d138995449e26b2fc83bd9d910aeabb7d77cd9e049e3efd9846db1899fe"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/App Icon.imagestack/Front.imagestacklayer/Contents.json",
+      "sha256": "e8e8ef4b27126d62305af321d12a6e64b866ca0b160f0f83efae90111f0ee576"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/Contents.json",
+      "sha256": "24564ab68aa55d3f308e5152d2373d84daa097a30dd5a46a8e59fadb7c6b8936"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/Top Shelf Wide.imageset/Contents.json",
+      "sha256": "0de6aaa0df84428aa81e7270348da00adc463c9d5ac40f627fd12b8683fc5d02"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/Top Shelf Wide.imageset/top-1x.png",
+      "sha256": "df7ceb768ffe0965c636a699b741cd59d0763f058e67cbbca2af8e2b35a9fc51"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/Top Shelf Wide.imageset/top-2x.png",
+      "sha256": "db962048dcce0a20a6ab36221688305d24542f41a143d3e60d30dc7f612596a6"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/Top Shelf.imageset/Contents.json",
+      "sha256": "0de6aaa0df84428aa81e7270348da00adc463c9d5ac40f627fd12b8683fc5d02"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/Top Shelf.imageset/top-1x.png",
+      "sha256": "3c6d11ae5ab17b50964cb252938cf7cb5a8d0303d59ca88d9454956efc0dafa0"
+    },
+    {
+      "path": "apple/Assets.xcassets/TVBrand.brandassets/Top Shelf.imageset/top-2x.png",
+      "sha256": "58972042c5f7cdedda3fb780c003615c1913d376b94506bef00532a84e0200c8"
+    },
+    {
+      "path": "apple/AssetsSource/Mascots/alerts.png",
+      "sha256": "2148fb18893733b6d127e6348132096eb3bfb286077b5072886861b1d0fb759a"
+    },
+    {
+      "path": "apple/AssetsSource/Mascots/intake.png",
+      "sha256": "e6ea03df53af3a62b6201da71af6498073ffc77a2e52d8f96cc13fd3de293803"
+    },
+    {
+      "path": "apple/AssetsSource/Mascots/inventory.png",
+      "sha256": "4b474225687a4a79d46783c0e24e8dfbf0fa69d0980e3146a5336a278bf4314b"
+    },
+    {
+      "path": "apple/AssetsSource/Mascots/pickup.png",
+      "sha256": "6f443fe029a6e041ea244a81753ffcae43f2ac9d1ba71efe58d790f5fffd63b7"
+    },
+    {
+      "path": "apple/AssetsSource/Mascots/research.png",
+      "sha256": "b99bc18498d60b9bb7af6b0d4ed25e94f24191406428e76ce386e9986ef55df5"
+    },
+    {
+      "path": "apple/AssetsSource/Mascots/shipping.png",
+      "sha256": "65b204a5aa6c010d5b16636bd04a6e09a9fb753e6416f5a5decf4e15922600c5"
+    },
+    {
+      "path": "apple/AssetsSource/Mascots/success.png",
+      "sha256": "5e0e15420db3e096802a5d1cea68979092143b9fd6b47117d7a7df5b20f6cbc4"
+    },
+    {
+      "path": "apple/AssetsSource/resale-burrow-approved-brand.png",
+      "sha256": "a2a2ffac269bca9b142b2b23971c254648c93048e2816416d9c5a4db420a36d5"
+    },
+    {
+      "path": "apple/AssetsSource/resale-burrow-approved-tv.png",
+      "sha256": "06be403ad2e4a2c72a7c9ca5608735f05fe318ea6ffd40147030032c313d4484"
+    },
+    {
+      "path": "apple/AssetsSource/resale-burrow-approved-watch.png",
+      "sha256": "e70cb3eb9d225c5215964efcf0fd8d16c96874b697b1ff578af39b22ead22238"
+    },
+    {
+      "path": "apple/AssetsSource/resale-burrow-tv-foreground.png",
+      "sha256": "08308c2124be6e2501d7de8e60a7f5cce64b2b6cc73bb61bfedd3141c2207fee"
+    },
+    {
+      "path": "apple/Configuration/Privacy/ResaleBurrowIOS/PrivacyInfo.xcprivacy",
+      "sha256": "cd6ed5563b2a38fdf4364b7c014f877c5ea929d375656ebf2d8bc5bd73fdb0bc"
+    },
+    {
+      "path": "apple/Configuration/Privacy/ResaleBurrowIOSWidgets/PrivacyInfo.xcprivacy",
+      "sha256": "5aec2466307e3b5990cce28e31c61c8860a457ffda9d9ea2546c369d53ff1545"
+    },
+    {
+      "path": "apple/Configuration/Privacy/ResaleBurrowMac/PrivacyInfo.xcprivacy",
+      "sha256": "cd6ed5563b2a38fdf4364b7c014f877c5ea929d375656ebf2d8bc5bd73fdb0bc"
+    },
+    {
+      "path": "apple/Configuration/Privacy/ResaleBurrowMacWidgets/PrivacyInfo.xcprivacy",
+      "sha256": "5aec2466307e3b5990cce28e31c61c8860a457ffda9d9ea2546c369d53ff1545"
+    },
+    {
+      "path": "apple/Configuration/Privacy/ResaleBurrowTV/PrivacyInfo.xcprivacy",
+      "sha256": "7afe3e2041ed3e220fc90b090e58960b00d1038922b6f23fe068fca94b7da903"
+    },
+    {
+      "path": "apple/Configuration/Privacy/ResaleBurrowWatch/PrivacyInfo.xcprivacy",
+      "sha256": "7afe3e2041ed3e220fc90b090e58960b00d1038922b6f23fe068fca94b7da903"
+    },
+    {
+      "path": "apple/Configuration/Privacy/ResaleBurrowWatchWidgets/PrivacyInfo.xcprivacy",
+      "sha256": "5aec2466307e3b5990cce28e31c61c8860a457ffda9d9ea2546c369d53ff1545"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowIOS.entitlements",
+      "sha256": "ed6df414f4316ddfacb56342e6b8de9be3ce2d40c88eeeca87acb70e9cf86c22"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowIOS.plist",
+      "sha256": "764f64d0027248a8c7591d0a5107df23edb55b770a9e537fae1f343bf9bb676e"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowIOSWidgets.entitlements",
+      "sha256": "1cfea6860b16dd14a1e8aeede27fe5346e45ecc8cc866d9bb196f193a6ddd986"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowIOSWidgets.plist",
+      "sha256": "97616fcd4940d156e212a0d84902a8a69eb72eb30819c37770571f571775ab16"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowMac.entitlements",
+      "sha256": "12e360173ebc58e24137ad9e58a225581eb9ccd2033d58d070e1e81531118646"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowMac.plist",
+      "sha256": "7d7f60c4a8fe61f3379cc3872d54b2964786d783c77d109c9bbc7e5f21b4080d"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowMacWidgets.entitlements",
+      "sha256": "2533bffce42b022947f04b65c67d33b01dee8c8436c0fabab3940c5cca527f86"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowMacWidgets.plist",
+      "sha256": "97616fcd4940d156e212a0d84902a8a69eb72eb30819c37770571f571775ab16"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowTV.entitlements",
+      "sha256": "1cfea6860b16dd14a1e8aeede27fe5346e45ecc8cc866d9bb196f193a6ddd986"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowTV.plist",
+      "sha256": "a2fd90487d97d944ca8bb07a234eece80ca19a896b670c2a7d846154397fb325"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowWatch.entitlements",
+      "sha256": "ed6df414f4316ddfacb56342e6b8de9be3ce2d40c88eeeca87acb70e9cf86c22"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowWatch.plist",
+      "sha256": "bd2aba3f4554e931d1ae912bcbd21be02fc7ff4768c3153ebf5628adc6435879"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowWatchWidgets.entitlements",
+      "sha256": "1cfea6860b16dd14a1e8aeede27fe5346e45ecc8cc866d9bb196f193a6ddd986"
+    },
+    {
+      "path": "apple/Configuration/ResaleBurrowWatchWidgets.plist",
+      "sha256": "97616fcd4940d156e212a0d84902a8a69eb72eb30819c37770571f571775ab16"
+    },
+    {
+      "path": "apple/IMPLEMENTATION_STATUS.md",
+      "sha256": "931f548b8ec743d442b52ad45a7efa8f5059c6826ff85d041475cefc2304c416"
+    },
+    {
+      "path": "apple/PRIVATE_SOURCE_HANDOFF.md",
+      "sha256": "dcb1e3a35966558f91f6df19419175696e93f99e186b2a3c1f088ad7ac0c84b7"
+    },
+    {
+      "path": "apple/Package.swift",
+      "sha256": "98c631c43773d1e6d4597670078233a76966ebb5f8e7e006eaff261cd0f39337"
+    },
+    {
+      "path": "apple/README.md",
+      "sha256": "c7bd60c269fbab22186020e780f76534afc3e5e487ffce2b9020e831da373a65"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/project.pbxproj",
+      "sha256": "e9b9b49c8a73d6d0cf7db12e7b3cf6c2b50fd04c71137a304896de48239fd21c"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/xcshareddata/xcschemes/ResaleBurrowIOS.xcscheme",
+      "sha256": "61d9392aed5bc17596fd48326db506d947b3aabc710865352f70f0c538481d50"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/xcshareddata/xcschemes/ResaleBurrowIOSWidgets.xcscheme",
+      "sha256": "8f83f451ed274ebc45d5c49b5cd07127b9e5978229d688a766791eaa449cb685"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/xcshareddata/xcschemes/ResaleBurrowMac.xcscheme",
+      "sha256": "b1f4e4645d993b134f9079800580181f291f432344346b0a3e5c5d268dc46c41"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/xcshareddata/xcschemes/ResaleBurrowMacWidgets.xcscheme",
+      "sha256": "f39d8841df705b28faffc71bfecb3269799c9c624d02dccb8408deb1e108340c"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/xcshareddata/xcschemes/ResaleBurrowTV.xcscheme",
+      "sha256": "e4c586300df90adc62d186b95779af7edbf883cb4b9c4ea0704db33ac91e7244"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/xcshareddata/xcschemes/ResaleBurrowWatch.xcscheme",
+      "sha256": "0e6a1ba8066bdcee39542fb6d4e51aa515c7ebf5c83d3401ddd77df8a519ac07"
+    },
+    {
+      "path": "apple/ResaleBurrow.xcodeproj/xcshareddata/xcschemes/ResaleBurrowWatchWidgets.xcscheme",
+      "sha256": "39fe61b57f736f18b6d1b27e3694ca572e8f29baa04782ebe49fb1cda8de6107"
+    },
+    {
+      "path": "apple/SIRI.md",
+      "sha256": "8b78059f59d9f8bfd6b994ef3e4bb108872246d87eb1baa074739e5510e90fee"
+    },
+    {
+      "path": "apple/Shared/APIClient.swift",
+      "sha256": "5dc4e4c3c4a91dd84b67e4102b0367d51a826a421a44c99e5761363ee845d904"
+    },
+    {
+      "path": "apple/Shared/Credentials.swift",
+      "sha256": "a9a851546526afc8a5c20fa16366a79fc21b1c0f6ae2201e6359cdb73759ff03"
+    },
+    {
+      "path": "apple/Shared/FeePlanning.swift",
+      "sha256": "46a40216c9e1787d347ddcd7052c517178acaebd28a30d31c3946e7789866cf9"
+    },
+    {
+      "path": "apple/Shared/InventoryFiltering.swift",
+      "sha256": "b6cae29dd0306e7a442fa62b4736c98c13219f13b0a7416b3030a17247e1c6a5"
+    },
+    {
+      "path": "apple/Shared/ListingWidgetModels.swift",
+      "sha256": "b1c83c67ccf0f6cdaf741ec7422bdbdceda93fdd6b8cef26643ff7a44ef06554"
+    },
+    {
+      "path": "apple/Shared/Models.swift",
+      "sha256": "bd05def43049eaa7668cf2240458d6e3b3a96697e525a85c231baf86ddfcfb5a"
+    },
+    {
+      "path": "apple/Shared/ReviewTools.swift",
+      "sha256": "2a368db6e92d7244c22b6864be29c3666611fd948f05aa11c8e3c50febc03d4f"
+    },
+    {
+      "path": "apple/Shared/WorkflowModels.swift",
+      "sha256": "d7dfc6731102dac6b4134b9cf7207116f9011a7f8c43b82718817ed42b58076d"
+    },
+    {
+      "path": "apple/Tests/CitedSuggestionTests.swift",
+      "sha256": "ba3315853ea82b08adbe8b7b861a2c3f906f0589f19f4b8266444e8203f38dd2"
+    },
+    {
+      "path": "apple/Tests/CoreTests.swift",
+      "sha256": "81b55f3553c73be9bc5311030e92fcca0cb1bf71c934cee72a19c05551547457"
+    },
+    {
+      "path": "apple/Tests/FeePlanningTests.swift",
+      "sha256": "d50102f27f9fc2bad3b101da2dcd9653b3cb2e2c17a59b4279d4c587b8fa8f22"
+    },
+    {
+      "path": "apple/Tests/IntakeSuggestionTests.swift",
+      "sha256": "b96c09a745c4cd241fb3db0980603146b733cb3707b383e4b6d3027f054ced7d"
+    },
+    {
+      "path": "apple/Tests/InventoryFilteringTests.swift",
+      "sha256": "8294934be87d053e280b641df87af7cface6c274a7970b0f35bb83f6b56ae708"
+    },
+    {
+      "path": "apple/Tests/ListingWidgetTests.swift",
+      "sha256": "0b437478012ef9fa755f5af56fedbb63fdf1167acee08343c658b41e2e1832c2"
+    },
+    {
+      "path": "apple/WIDGETS.md",
+      "sha256": "b46cabe7579dec2f4be3fd5be7127714af7258a8485aee7313310cf7eb0d5bd6"
+    },
+    {
+      "path": "apple/Widgets/LiveReminderWidget.swift",
+      "sha256": "187371466cc95e614a000a3a4879b0e1a26f1e5bcd642d076696374b86f0b700"
+    },
+    {
+      "path": "apple/Widgets/MarketplaceListingsWidget.swift",
+      "sha256": "e8e99da5fa1ece1e3f6cde2122c9e77f540973921827ef3817f2ab29a358f259"
+    },
+    {
+      "path": "apple/Widgets/ResaleBurrowWidgets.swift",
+      "sha256": "529148c499e465c98a4d057c42e74307eeb6cf767fed6deb91913fa0829e42ea"
+    },
+    {
+      "path": "apple/icon-asset-lineage.json",
+      "sha256": "97d0e745a9c2179397c7eeb802d2fa4c9c4cacf6a04b1356e4e7db4a89041600"
+    },
+    {
+      "path": "apple/project.yml",
+      "sha256": "e1c02d64fa726fbbe595d04fb6c3f3ba3c0fa1b5363d1bb7670531aef2258da6"
+    },
+    {
+      "path": "apple/scripts/generate_project.py",
+      "sha256": "2cf548a9a1ebe39d7b95fe61496cb3635bd368f00ff66ad47fe66793dc7c568f"
+    },
+    {
+      "path": "apple/scripts/package_apple_source.py",
+      "sha256": "444b38e794e715f85d9bbba700523f7e85288bdcc6cce701ec066eec76b30639"
+    },
+    {
+      "path": "apple/scripts/prepare_icon_assets.py",
+      "sha256": "54aeef4a7a013126073b09ad451fe51ccad8567cf455fc862594653e07f9ba12"
+    }
+  ]
+}
