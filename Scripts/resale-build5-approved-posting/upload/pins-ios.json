@@ -1,0 +1,13 @@
+{
+  "family": "ios",
+  "release_id": 405438022,
+  "release_tag": "resale-burrow-0.1.0-build-5-ios-79bbd8e2c59f",
+  "package_name": "ResaleBurrowIOS.ipa",
+  "package_asset_id": 617778934,
+  "package_sha256": "3e5b93424667a9a4522eb6c0a1af48e8cc6f4df9b70c71591927992a8858ff91",
+  "package_bytes": 19366774,
+  "manifest_name": "manifest.json",
+  "manifest_asset_id": 617778931,
+  "manifest_sha256": "f3a37d601f9899c90263d4c0df65c7c30639901805ca6a8a88f69165ef38f49a",
+  "manifest_bytes": 892
+}
