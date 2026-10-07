@@ -1,0 +1,14 @@
+{
+  "schema": "ReBurrow-build4-export-coordinates-1",
+  "source_sha": "91ba1e8a6eb1aa18057b11bbab0c0f58b9282ce0",
+  "export_head_sha": "00314dc8019a33de4d276b12cac1d1c95e9c0110",
+  "export_run_id": 37571716415,
+  "export_job_id": 112631614564,
+  "workflow": ".github/workflows/resale-build4-intake-export.yml",
+  "branch": "codex/resale-burrow-build4-intake-timeout-export",
+  "event": "workflow_dispatch",
+  "job_name": "export (ios)",
+  "authenticated_successful_run_observed": true,
+  "run_evidence_sha256": "3eab493690269bdd66195bf7d4f5d9b2c14df0c81b159f6c4c66af51dda0c984",
+  "job_evidence_sha256": "10773d0331f8315537deb866662fabe53f51a34076d2d50234402954f4adbe83"
+}
