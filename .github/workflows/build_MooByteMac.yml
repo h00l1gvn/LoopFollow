@@ -1,64 +1,49 @@
-name: Build MooByte Mac
-run-name: Build and deliver the native MooByte Mac app to TestFlight
+name: Read MooByte Mac 53 arrival only
+run-name: Read-only App Store Connect check for MooByte Mac 1.0 (53)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/build_MooByteMac.yml
-      - fastlane/Fastfile
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  exact-mac53-read:
+    if: github.repository == 'h00l1gvn/LoopFollow' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/moobyte-mac53-readonly-20261014'
     runs-on: macos-26
-    permissions:
-      contents: read
+    timeout-minutes: 8
+    env:
+      BUNDLE_FROZEN: 'true'
+      FASTLANE_SKIP_UPDATE_CHECK: 'true'
+      FASTLANE_HIDE_CHANGELOG: 'true'
+      FASTLANE_HIDE_TIMESTAMP: 'true'
     steps:
-      - name: Select Xcode
-        run: sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+      - name: Select the reviewed Xcode route
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.2.app/Contents/Developer
+          test "$(xcrun --sdk macosx --show-sdk-version)" = '26.2'
 
-      - name: Checkout delivery tools
+      - name: Checkout this reviewed read-only branch
         uses: actions/checkout@v5
         with:
-          token: ${{ secrets.GH_PAT }}
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Checkout MooByte source
-        uses: actions/checkout@v5
-        with:
-          repository: h00l1gvn/moobyte-apple-private
-          token: ${{ secrets.GH_PAT }}
-          path: MooByteSource
+      - name: Verify reviewed tooling ancestry and source pins
+        run: |
+          test "$(git merge-base 6e6f97a1b18781c7ffc6cf620f15293c29515fc5 HEAD)" = '6e6f97a1b18781c7ffc6cf620f15293c29515fc5'
+          ruby ci/verify_moobyte_mac53_pins.rb
 
-      - name: Install delivery dependencies
+      - name: Install the unchanged locked SDK dependencies
         run: bundle install
 
-      - name: Build and sign the native MooByte Mac app
-        run: bundle exec fastlane mac build_MooByteMac
+      - name: Prove GET-only transport and actual locked SDK authentication offline
+        run: bundle exec ruby ci/test_moobyte_mac53_readonly.rb --sdk
+
+      - name: Read exact existing Mac build and internal testing state
+        run: bundle exec ruby ci/moobyte_mac53_readonly.rb --execute-read-only
         env:
-          TEAMID: ${{ secrets.TEAMID }}
-          GH_PAT: ${{ secrets.GH_PAT }}
           FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
           FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
           FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-
-      - name: Upload MooByte Mac to internal TestFlight
-        run: bundle exec fastlane mac release_MooByteMac
-        env:
-          TEAMID: ${{ secrets.TEAMID }}
-          GH_PAT: ${{ secrets.GH_PAT }}
-          FASTLANE_KEY_ID: ${{ secrets.FASTLANE_KEY_ID }}
-          FASTLANE_ISSUER_ID: ${{ secrets.FASTLANE_ISSUER_ID }}
-          FASTLANE_KEY: ${{ secrets.FASTLANE_KEY }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-
-      - name: Preserve build diagnostics
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: MooByteMac-build
-          path: |
-            artifacts-moobyte-mac
-            buildlog-moobyte-mac
